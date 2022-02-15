@@ -1,3 +1,4 @@
+/* sneaky comment */
 #ifndef FONT_HANDLER_H
 #define FONT_HANDLER_H
 #include <SDL2/SDL.h>
