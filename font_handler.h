@@ -12,7 +12,7 @@ struct temp_font {
 
 void font_init(void);
 
-struct temp_font load_string_font(SDL_Renderer* renderer, char* str);
+struct temp_font load_string_font(SDL_Renderer* renderer, SDL_Texture* texture, char* str);
 
 void font_cleanup(void);
 

@@ -31,12 +31,15 @@ void font_init(void)
 
 }
 
-struct temp_font myfont;
+//struct temp_font myfont;
 
-struct temp_font load_string_font(SDL_Renderer* renderer, char* str)
+//Might cause a memory leak? because texture remains??
+struct temp_font load_string_font(SDL_Renderer* renderer, SDL_Texture* texture, char* str)
 {
-    if(fonts_loaded)
-    {
+    struct temp_font myfont;
+    //if(fonts_loaded)
+    //{
+        myfont.texture = texture;
         SDL_Surface *surface;
         SDL_Color textColor = { 0, 255, 0, 255};
 
@@ -51,7 +54,7 @@ struct temp_font load_string_font(SDL_Renderer* renderer, char* str)
         //SDL_DestroyTexture(myfont.texture);
         SDL_FreeSurface(surface);
 
-    }
+    //}
     return myfont;
 }
 
