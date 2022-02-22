@@ -30,19 +30,19 @@ SDL_Event e;
 int window_width = STARTING_WINDOW_WIDTH;
 int window_height = STARTING_WINDOW_HEIGHT;
 
-struct INT_VECTOR2 {
-	int x;
-	int y;
-};
-
 struct FLOAT_VECTOR2 {
 	float x;
 	float y;
 };
 
+struct INT_VECTOR2 {
+	int x;
+	int y;
+};
+
 struct INT_VECTOR2 origin = {STARTING_WINDOW_WIDTH/2, STARTING_WINDOW_HEIGHT/2};
 struct INT_VECTOR2 origin_offset;
-struct FLOAT_VECTOR2 mouse_speed = {5, 3};
+struct FLOAT_VECTOR2 mouse_speed = {120, 45};
 struct INT_VECTOR2 coordinate_location;
 
 // Variables for keeping track of how far away we're from the origin
@@ -69,9 +69,9 @@ char* coordinate_str_x = "Coordinate X: ";
 char* coordinate_str_y = "Coordinate Y: ";
 
 // find out limit of an array size(does type matter for array size??)
-#define MAX_COORD_SIZE 120
-char coordinate_x[MAX_COORD_SIZE];
-char coordinate_y[MAX_COORD_SIZE];
+//#define MAX_COORD_SIZE 1200
+char coordinate_x[MAX_FONT_COORDINATES];
+char coordinate_y[MAX_FONT_COORDINATES];
 
 float fps;
 const float FPS_TARGET = 60.0f;
@@ -97,10 +97,10 @@ int main(void)
 
 		fps = (frame_time > 0) ? 1000.0f / frame_time : 0.0f;
 		// Draw fps
-		char buffconv[MAX_COORD_SIZE] = {0};
+		/*char buffconv[MAX_COORD_SIZE] = {0};
 		strncat(buffconv, "FPS: ", MAX_COORD_SIZE-1);
 		snprintf(&buffconv[5], MAX_COORD_SIZE-5, "%d", (int)fps);
-		SDL_Texture* texture;
+		SDL_Texture* texture = NULL;
 		struct temp_font temp = load_string_font(renderer, texture, buffconv);
 		temp.rect.x = 200;
 		temp.rect.y = 300;
@@ -108,6 +108,7 @@ int main(void)
 		SDL_RenderCopy(renderer, temp.texture, NULL, &temp.rect);
 		SDL_RenderPresent(renderer);
 		SDL_DestroyTexture(temp.texture);
+		*/
 		printf("Printing fps: %d\n", (int)fps);
 
 		//if(fps > FPS_TARGET)
@@ -175,11 +176,7 @@ void draw_axes(void)
 void draw_numbers(void)
 {
 	struct INT_VECTOR2 distance;
-	// positives up + 0
-	char buffconv[MAX_COORD_SIZE];
-	struct temp_font temp;
 	int count;
-	//int count = 0;
 	//old code - limits numbers to distance
 	//for(distance.y = 0, distance.x = 0;
 		//count < render_distance.y; distance.y += (-spacing), count++)
@@ -192,77 +189,63 @@ void draw_numbers(void)
 	**
 	**
 	*/
+
+	// Positive up + 0
 	int eval = (origin_offset.y+window_height/2);
-	for(count = 0, distance.y = 0, distance.x = 0; count < MAX_COORD_SIZE; count++, distance.y += (-spacing))
+	for(count = 0, distance.y = 0, distance.x = 0; count < MAX_FONT_COORDINATES; count++, distance.y += (-spacing))
 	{
 		int count_spacing = count*spacing;
 		if(count_spacing <= (eval) && (count_spacing) > origin_offset.y-origin.y)
 		{
-			//printf("COUNT*SPACE: %lf <= EVAL: %d\n", count*spacing, eval);
-			snprintf(buffconv, MAX_COORD_SIZE, "%d", count);
-			SDL_Texture* texture;
-			temp = load_string_font(renderer, texture, buffconv);
-			temp.rect.x = distance.x + coordinate_location.x;
-			temp.rect.y = distance.y + coordinate_location.y;
+			MY_FONT* r_font = load_number(count);
+			r_font->rect.x = distance.x + coordinate_location.x;
+			r_font->rect.y = distance.y + coordinate_location.y;
 
-			SDL_RenderCopy(renderer, temp.texture, NULL, &temp.rect);
-			SDL_DestroyTexture(temp.texture);
+			SDL_RenderCopy(renderer, r_font->texture, NULL, &(r_font->rect));
 		}
 	}
-	//count = 1;
+
 	// negatives down
-	//for(distance.y = (spacing), distance.x = 0; count < render_distance.y; distance.y += spacing, count++){
-	for(count = 1, distance.y = (spacing), distance.x = 0; count < MAX_COORD_SIZE; count++, distance.y += (spacing))
+	for(count = 1, distance.y = (spacing), distance.x = 0; count < MAX_FONT_COORDINATES; count++, distance.y += (spacing))
 	{
 		int count_spacing = count*spacing;
 		if(-count_spacing <= -(eval) && -(count_spacing) > -origin_offset.x+origin.x)
 		{
-		snprintf(buffconv, MAX_COORD_SIZE, "%d", -count);
-		//temp = load_string_font(renderer, buffconv);
-		SDL_Texture* texture;
-		temp = load_string_font(renderer, texture, buffconv);
-		temp.rect.x = distance.x + coordinate_location.x;
-		temp.rect.y = distance.y + coordinate_location.y;
+			MY_FONT* r_font = load_number(count);
 
-		SDL_RenderCopy(renderer, temp.texture, NULL, &temp.rect);
-		SDL_DestroyTexture(temp.texture);
+			r_font->rect.x = distance.x + coordinate_location.x;
+			r_font->rect.y = distance.y + coordinate_location.y;
+
+		SDL_RenderCopy(renderer, r_font->texture, NULL, &(r_font->rect));
 		}
 	}
 
-	//count = 1;
 	// positive right
-	//for(distance.y = 0, distance.x = (spacing); count < render_distance.x; distance.x += spacing, count++){
-	for(count = 1, distance.y = 0, distance.x = (spacing); count < MAX_COORD_SIZE; count++, distance.x += (spacing))
-	{
-		snprintf(buffconv, MAX_COORD_SIZE, "%d", count);
-		//temp = load_string_font(renderer, buffconv);
-		SDL_Texture* texture;
-		temp = load_string_font(renderer, texture, buffconv);
-		temp.rect.x = distance.x + coordinate_location.x;
-		temp.rect.y = distance.y + coordinate_location.y;
+	for(count = 1, distance.y = 0, distance.x = (spacing); count < MAX_FONT_COORDINATES; count++, distance.x += (spacing))
 
-		SDL_RenderCopy(renderer, temp.texture, NULL, &temp.rect);
-		SDL_DestroyTexture(temp.texture);
+
+	{
+		MY_FONT* r_font = load_number(count);
+
+		r_font->rect.x = distance.x + coordinate_location.x;
+		r_font->rect.y = distance.y + coordinate_location.y;
+
+		SDL_RenderCopy(renderer, r_font->texture, NULL, &(r_font->rect));
 	}
 
-	//count = -1;
 	// negatives left
 	// This is one is a bit different. Don't know why we have to specifically assign -1 to count and not on the negative down for loop
-	//for(distance.y = 0, distance.x = (spacing); count < render_distance.x; distance.x += (-spacing), count++)
-	for(count = -1, distance.y = 0, distance.x = (spacing); count < MAX_COORD_SIZE; count++, distance.x += (-spacing))
+	for(count = 1, distance.y = 0, distance.x = -(spacing); count < MAX_FONT_COORDINATES; count++, distance.x += (-spacing))
 	{
-		snprintf(buffconv, MAX_COORD_SIZE, "%d", -count);
-		//temp = load_string_font(renderer, buffconv);
-		SDL_Texture* texture;
-		temp = load_string_font(renderer, texture, buffconv);
-		temp.rect.x = distance.x + coordinate_location.x;
-		temp.rect.y = distance.y + coordinate_location.y;
 
-		SDL_RenderCopy(renderer, temp.texture, NULL, &temp.rect);
-		SDL_DestroyTexture(temp.texture);
+		MY_FONT* r_font = load_number(-count);
+
+		r_font->rect.x = distance.x + coordinate_location.x;
+		r_font->rect.y = distance.y + coordinate_location.y;
+
+		SDL_RenderCopy(renderer, r_font->texture, NULL, &(r_font->rect));
 	}
 }
-
 
 void mouse_event(void)
 {
@@ -284,44 +267,45 @@ void mouse_event(void)
 
 		// We get the difference between the coordinates from when
 		// the user first clicks the mouse and while they are moving the mouse
-		origin_offset.x += ((first_click_x -x) * (fps/1000));
-		origin_offset.y += ((first_click_y - y) * (fps/1000));
+		origin_offset.x += ((first_click_x -x)); //* (fps/1000));
+		origin_offset.y += ((first_click_y - y)); // * (fps/1000));
 	}
 
 }
-
-char num_buffer[MAX_COORD_SIZE];
+/**/
+char num_buffer2[MAX_FONT_COORDINATES];
 
 void draw_coordinates(void)
 {
-	memset(&coordinate_x, 0, MAX_COORD_SIZE-1);
-	memset(&coordinate_y, 0, MAX_COORD_SIZE-1);
+	memset(&coordinate_x, 0, MAX_FONT_COORDINATES-1);
+	memset(&coordinate_y, 0, MAX_FONT_COORDINATES-1);
 
-	strncpy(coordinate_x, coordinate_str_x, MAX_COORD_SIZE-1);
-	strncpy(coordinate_y, coordinate_str_y, MAX_COORD_SIZE-1);
+	strncpy(coordinate_x, coordinate_str_x, MAX_FONT_COORDINATES-1);
+	strncpy(coordinate_y, coordinate_str_y, MAX_FONT_COORDINATES-1);
 
-	snprintf(num_buffer, MAX_COORD_SIZE, "%d", (int)-(origin_offset.x));
+	snprintf(num_buffer2, MAX_FONT_COORDINATES-1, "%d", (int)-(origin_offset.x));
 
 	// Maybe buffer overflow because string can go MAX_COORD_SIZE + coordinate_x??
 	// or maybe not cuz strncat limits it
-	char* final_str_x = strncat(coordinate_x, num_buffer, MAX_COORD_SIZE-1);
-	snprintf(num_buffer, MAX_COORD_SIZE, "%d", (int)origin_offset.y);
-	char* final_str_y = strncat(coordinate_y, num_buffer, MAX_COORD_SIZE-1);
+	char* final_str_x = strncat(coordinate_x, num_buffer2, MAX_FONT_COORDINATES-1);
+	snprintf(num_buffer2, MAX_FONT_COORDINATES-1, "%d", (int)origin_offset.y);
+	char* final_str_y = strncat(coordinate_y, num_buffer2, MAX_FONT_COORDINATES-1);
 
-	SDL_Texture* texture;
-	struct temp_font temp_font_x = load_string_font(renderer, texture, final_str_x);
-	SDL_RenderCopy(renderer, temp_font_x.texture, NULL, &temp_font_x.rect);
-	SDL_DestroyTexture(temp_font_x.texture);
+	SDL_Texture* texture = NULL;
+	MY_FONT* temp_font_x = load_string_font(renderer, texture, final_str_x);
+	SDL_RenderCopy(renderer, temp_font_x->texture, NULL, &temp_font_x->rect);
+	SDL_DestroyTexture(temp_font_x->texture);
 
-	struct temp_font temp_font_y = load_string_font(renderer, texture, final_str_y);
-	temp_font_y.rect.y = 75;
-	SDL_RenderCopy(renderer, temp_font_y.texture, NULL, &temp_font_y.rect);
+	MY_FONT* temp_font_y = load_string_font(renderer, texture, final_str_y);
+	temp_font_y->rect.y = 75;
+	SDL_RenderCopy(renderer, temp_font_y->texture, NULL, &temp_font_y->rect);
 
-	SDL_DestroyTexture(temp_font_y.texture);
+	SDL_DestroyTexture(temp_font_y->texture);
 }
 
 void initialize(void)
 {
+	printf("Iniitializing\n\n");
 	SDL_Init(SDL_INIT_VIDEO);
 	window = SDL_CreateWindow(WINDOW_TITLE, WINDOW_POSX, WINDOW_POSY, STARTING_WINDOW_WIDTH, STARTING_WINDOW_HEIGHT, SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
 
@@ -334,7 +318,7 @@ void initialize(void)
 	int buffering;
 	SDL_GL_GetAttribute(SDL_GL_DOUBLEBUFFER, &buffering);
 
-	font_init();
+	font_init(renderer);
 }
 
 void input(void)
