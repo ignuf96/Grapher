@@ -18,17 +18,23 @@
 
 // Window information for initialization
 #define WINDOW_TITLE "Grapher"
+
+#define PIXEL_WIDTH 16*3
+#define PIXEL_HEIGHT 9*3
+
+// Sane? don't know how it'll work with larger or smaller screens
 #define STARTING_WINDOW_HEIGHT 1920
 #define STARTING_WINDOW_WIDTH 1080
 #define WINDOW_POSX SDL_WINDOWPOS_UNDEFINED
 #define WINDOW_POSY SDL_WINDOWPOS_UNDEFINED
+// Let's try out same width and height. This will be our 'imaginary dimensions'
 
 SDL_Window* window;
 SDL_Renderer* renderer;
 SDL_Event e;
 
-int window_width = STARTING_WINDOW_WIDTH;
-int window_height = STARTING_WINDOW_HEIGHT;
+int window_width_raw = STARTING_WINDOW_WIDTH;
+int window_height_raw = STARTING_WINDOW_HEIGHT;
 
 struct FLOAT_VECTOR2 {
 	float x;
@@ -40,19 +46,19 @@ struct INT_VECTOR2 {
 	int y;
 };
 
-struct INT_VECTOR2 origin = {STARTING_WINDOW_WIDTH/2, STARTING_WINDOW_HEIGHT/2};
+struct INT_VECTOR2 origin = {PIXEL_WIDTH/2, PIXEL_HEIGHT/2};
 struct INT_VECTOR2 origin_offset;
-struct FLOAT_VECTOR2 mouse_speed = {120, 45};
+struct FLOAT_VECTOR2 mouse_speed = {2222.0f, 2222.0f};
 struct INT_VECTOR2 coordinate_location;
 
 // Variables for keeping track of how far away we're from the origin
 // Used for drawing graph
 // Amount of space away from y and x axis
 // Used for drawing lines in the quadrants
-static float spacing = 40.0f;
+static float spacing = 1.0f;
 #define SPACING_LIMIT 25.0f
 
-struct INT_VECTOR2 render_distance = {STARTING_WINDOW_WIDTH, STARTING_WINDOW_HEIGHT};
+struct INT_VECTOR2 render_distance = {PIXEL_WIDTH, PIXEL_HEIGHT};
 
 bool quit = false;
 
@@ -76,11 +82,50 @@ char coordinate_y[MAX_FONT_COORDINATES];
 float fps;
 const float FPS_TARGET = 60.0f;
 
+SPRITE horizontal_line;
+SPRITE vertical_line;
+
+void initialize(void)
+{
+	printf("Iniitializing\n\n");
+	SDL_Init(SDL_INIT_VIDEO);
+	window = SDL_CreateWindow(WINDOW_TITLE, WINDOW_POSX, WINDOW_POSY, STARTING_WINDOW_WIDTH, STARTING_WINDOW_HEIGHT, SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
+
+	renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+
+	int buffering;
+	SDL_GL_GetAttribute(SDL_GL_DOUBLEBUFFER, &buffering);
+
+	font_init(renderer);
+
+	char* horizontal_line_path = "/home/johnny/Documents/Projects/SDL/Grapher/horizontal_line.png";
+	char* vertical_line_path = "/home/johnny/Documents/Projects/SDL/Grapher/vertical_line.png";
+
+	SDL_Surface* surface = IMG_Load(horizontal_line_path);
+
+	horizontal_line.texture = SDL_CreateTextureFromSurface(renderer, surface);
+	horizontal_line.rect.w = PIXEL_WIDTH;
+	horizontal_line.rect.h = PIXEL_HEIGHT/16;
+	horizontal_line.rect.x = 0;
+	horizontal_line.rect.y = PIXEL_HEIGHT/2;
+	SDL_FreeSurface(surface);
+
+	SDL_Surface* surface2 = IMG_Load(vertical_line_path);
+
+	vertical_line.texture = SDL_CreateTextureFromSurface(renderer, surface2);
+	vertical_line.rect.w = PIXEL_WIDTH/28;
+	vertical_line.rect.h = PIXEL_HEIGHT;
+	vertical_line.rect.x = PIXEL_WIDTH/2;
+	vertical_line.rect.y = 0;
+	SDL_FreeSurface(surface2);
+
+}
+
 int main(void)
 {
 	initialize();
 	//ADAPTIVE SYNC (-1) IMMEDIATE(0)
-	SDL_GL_SetSwapInterval(1);
+	SDL_GL_SetSwapInterval(0);
 
 	while(!quit)
 	{
@@ -109,7 +154,7 @@ int main(void)
 		SDL_RenderPresent(renderer);
 		SDL_DestroyTexture(temp.texture);
 		*/
-		printf("Printing fps: %d\n", (int)fps);
+		//printf("Printing fps: %d\n", (int)fps);
 
 		//if(fps > FPS_TARGET)
 			//SDL_Delay((fps-FPS_TARGET)/1000);
@@ -126,8 +171,13 @@ void draw(void)
 	SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
 	SDL_RenderClear(renderer);
 
+	// axes in imaginary size so it's scaled up or down depending on actual dimensions
+	SDL_RenderSetLogicalSize(renderer, PIXEL_WIDTH, PIXEL_HEIGHT);
 	draw_axes();
-	draw_coordinates();
+	// using actual dimensions for text
+	//SDL_RenderSetLogicalSize(renderer, window_width_raw, window_height_raw);
+	//draw_coordinates();
+	//draw_numbers();
 	SDL_RenderPresent(renderer);
 }
 
@@ -140,14 +190,20 @@ bool left_mousedown = false;
 
 void draw_axes(void)
 {
-	coordinate_location.x = origin.x+origin_offset.x/mouse_speed.x;
-	coordinate_location.y = origin.y+origin_offset.y/mouse_speed.y;
-
 	SDL_SetRenderDrawColor(renderer, 145, 145, 145, 255);
 
+	//SDL_RenderCopy(renderer, horizontal_line.texture, NULL, &(horizontal_line.rect));
+	//SDL_RenderCopy(renderer, vertical_line.texture, NULL, &(vertical_line.rect));
+
+	coordinate_location.x = origin.x+origin_offset.x/mouse_speed.x;
+	coordinate_location.y = origin.y+origin_offset.y/mouse_speed.y;
+	coordinate_location.x/=PIXEL_WIDTH;
+	coordinate_location.y/=PIXEL_HEIGHT;
+
+	/*
 	for(int count = 0, y = coordinate_location.y + (-spacing); count < render_distance.y; y += -spacing, count++)
 	{
-		SDL_RenderDrawLine(renderer, 0, y, window_width, y);
+		SDL_RenderDrawLine(renderer, 0, y, PIXEL_WIDTH, y);
 	}
 
 	for(int count = 0, y = coordinate_location.y + (spacing); count < render_distance.y; y += spacing, count++)
@@ -166,14 +222,17 @@ void draw_axes(void)
 
 	}
 	SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+	*/
+	vertical_line.rect.x = coordinate_location.x;
+	SDL_RenderCopy(renderer, vertical_line.texture, NULL, &(vertical_line.rect));
 
-	SDL_RenderDrawLine(renderer, 0, coordinate_location.y, window_width, coordinate_location.y);
-	SDL_RenderDrawLine(renderer, coordinate_location.x, 0, coordinate_location.x, window_height);
-
-	draw_numbers();
+	horizontal_line.rect.y = coordinate_location.y;
+	SDL_RenderCopy(renderer, horizontal_line.texture, NULL, &(horizontal_line.rect));
+	//SDL_RenderDrawLine(renderer, 0, coordinate_location.y, window_width, coordinate_location.y);
+	//SDL_RenderDrawLine(renderer, coordinate_location.x, 0, coordinate_location.x, window_height);
 }
 
-void draw_numbers(void)
+/*void draw_numbers(void)
 {
 	struct INT_VECTOR2 distance;
 	int count;
@@ -182,22 +241,20 @@ void draw_numbers(void)
 		//count < render_distance.y; distance.y += (-spacing), count++)
 
 	// doesn't limit numbers on distance but on MAX_COORD_SIZE
-	/* Unfortunately cuts FPS by half but that is to be expected since it does render more numbers.
-	** NEED optimization to only render numbers on screen
-	** ALSO future problem. When user zooms all the way out and all the coordinates are shown... might cause drastic slow down.
-	** Limit zoom or find a better way to render all those coordinates.
-	**
-	**
-	*/
+	// Unfortunately cuts FPS by half but that is to be expected since it does render more numbers.
+	// NEED optimization to only render numbers on screen
+	// ALSO future problem. When user zooms all the way out and all the coordinates are shown... might cause drastic slow down.
+	// Limit zoom or find a better way to render all those coordinates.
+
 
 	// Positive up + 0
-	int eval = (origin_offset.y+window_height/2);
+	int eval = (origin_offset.y+window_height_raw/2);
 	for(count = 0, distance.y = 0, distance.x = 0; count < MAX_FONT_COORDINATES; count++, distance.y += (-spacing))
 	{
 		int count_spacing = count*spacing;
 		if(count_spacing <= (eval) && (count_spacing) > origin_offset.y-origin.y)
 		{
-			MY_FONT* r_font = load_number(count);
+			SPRITE* r_font = load_number(count);
 			r_font->rect.x = distance.x + coordinate_location.x;
 			r_font->rect.y = distance.y + coordinate_location.y;
 
@@ -211,7 +268,7 @@ void draw_numbers(void)
 		int count_spacing = count*spacing;
 		if(-count_spacing <= -(eval) && -(count_spacing) > -origin_offset.x+origin.x)
 		{
-			MY_FONT* r_font = load_number(count);
+			SPRITE* r_font = load_number(count);
 
 			r_font->rect.x = distance.x + coordinate_location.x;
 			r_font->rect.y = distance.y + coordinate_location.y;
@@ -225,7 +282,7 @@ void draw_numbers(void)
 
 
 	{
-		MY_FONT* r_font = load_number(count);
+		SPRITE* r_font = load_number(count);
 
 		r_font->rect.x = distance.x + coordinate_location.x;
 		r_font->rect.y = distance.y + coordinate_location.y;
@@ -238,7 +295,7 @@ void draw_numbers(void)
 	for(count = 1, distance.y = 0, distance.x = -(spacing); count < MAX_FONT_COORDINATES; count++, distance.x += (-spacing))
 	{
 
-		MY_FONT* r_font = load_number(-count);
+		SPRITE* r_font = load_number(-count);
 
 		r_font->rect.x = distance.x + coordinate_location.x;
 		r_font->rect.y = distance.y + coordinate_location.y;
@@ -246,6 +303,7 @@ void draw_numbers(void)
 		SDL_RenderCopy(renderer, r_font->texture, NULL, &(r_font->rect));
 	}
 }
+*/
 
 void mouse_event(void)
 {
@@ -269,13 +327,15 @@ void mouse_event(void)
 		// the user first clicks the mouse and while they are moving the mouse
 		origin_offset.x += ((first_click_x -x)); //* (fps/1000));
 		origin_offset.y += ((first_click_y - y)); // * (fps/1000));
+		printf("Coordinate_location.x: %d\n", coordinate_location.x/PIXEL_WIDTH);
+		printf("Coordinate_location.y: %d\n", coordinate_location.y/PIXEL_HEIGHT);
 	}
 
 }
 /**/
 char num_buffer2[MAX_FONT_COORDINATES];
 
-void draw_coordinates(void)
+/*void draw_coordinates(void)
 {
 	memset(&coordinate_x, 0, MAX_FONT_COORDINATES-1);
 	memset(&coordinate_y, 0, MAX_FONT_COORDINATES-1);
@@ -292,34 +352,17 @@ void draw_coordinates(void)
 	char* final_str_y = strncat(coordinate_y, num_buffer2, MAX_FONT_COORDINATES-1);
 
 	SDL_Texture* texture = NULL;
-	MY_FONT* temp_font_x = load_string_font(renderer, texture, final_str_x);
+	SPRITE* temp_font_x = load_string_font(renderer, texture, final_str_x);
 	SDL_RenderCopy(renderer, temp_font_x->texture, NULL, &temp_font_x->rect);
 	SDL_DestroyTexture(temp_font_x->texture);
 
-	MY_FONT* temp_font_y = load_string_font(renderer, texture, final_str_y);
+	SPRITE* temp_font_y = load_string_font(renderer, texture, final_str_y);
 	temp_font_y->rect.y = 75;
 	SDL_RenderCopy(renderer, temp_font_y->texture, NULL, &temp_font_y->rect);
 
 	SDL_DestroyTexture(temp_font_y->texture);
 }
-
-void initialize(void)
-{
-	printf("Iniitializing\n\n");
-	SDL_Init(SDL_INIT_VIDEO);
-	window = SDL_CreateWindow(WINDOW_TITLE, WINDOW_POSX, WINDOW_POSY, STARTING_WINDOW_WIDTH, STARTING_WINDOW_HEIGHT, SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
-
-	renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
-
-	//SDL_RenderSetScale(renderer, 16, 9);
-	//SDL_RenderSetScale(renderer, 2, 2);
-	//SDL_RenderSetLogicalSize(renderer, 4*100, 3*100);
-
-	int buffering;
-	SDL_GL_GetAttribute(SDL_GL_DOUBLEBUFFER, &buffering);
-
-	font_init(renderer);
-}
+*/
 
 void input(void)
 {
@@ -383,14 +426,16 @@ void input(void)
 						/*
 						** Change line coordinates to new window size
 						*/
-						window_width = e.window.data1;
-						window_height = e.window.data2;
+						//printf("First time called\n");
+						//sleep(5);
+						window_width_raw = e.window.data1;
+						window_height_raw = e.window.data2;
 
-						origin.x = window_width/2;
-						origin.y = window_height/2;
+						origin.x = window_width_raw/2;
+						origin.y = window_height_raw/2;
 
-						render_distance.x = window_width/spacing;
-						render_distance.y = window_height/spacing;
+						render_distance.x = window_width_raw/spacing;
+						render_distance.y = window_height_raw/spacing;
 
 						break;
 				}

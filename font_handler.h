@@ -6,11 +6,11 @@
 
 #define MAX_FONT_COORDINATES 3000
 
-typedef struct loaded_font {
+typedef struct SPRITE {
     SDL_Rect rect;
     SDL_Texture* texture;
 
-}MY_FONT;
+}SPRITE;
 
 struct INT_VECTOR4 {
     int width;
@@ -19,8 +19,8 @@ struct INT_VECTOR4 {
     int y;
 };
 
-MY_FONT* load_number(int number);
-MY_FONT* load_string_font(SDL_Renderer* renderer, SDL_Texture* texture, char* str);
+SPRITE* load_number(int number);
+SPRITE* load_string_font(SDL_Renderer* renderer, SDL_Texture* texture, char* str);
 void font_init(SDL_Renderer* renderer);
 void font_cleanup(void);
 

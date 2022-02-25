@@ -13,6 +13,7 @@
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
+#include <SDL2/SDL_image.h>
 #include <stdio.h>
 #include <stdbool.h>
 #include <limits.h>
@@ -25,8 +26,8 @@ static bool fonts_loaded = false;
 TTF_Font *coordinate_font;
 char num_buffer[MAX_FONT_COORDINATES];
 
-MY_FONT p_font[MAX_FONT_COORDINATES];
-MY_FONT n_font[MAX_FONT_COORDINATES];
+SPRITE p_font[MAX_FONT_COORDINATES];
+SPRITE n_font[MAX_FONT_COORDINATES];
 
 void font_init(SDL_Renderer* renderer)
 {
@@ -80,9 +81,9 @@ void font_init(SDL_Renderer* renderer)
 
 }
 
-struct loaded_font* load_number(int number)
+SPRITE* load_number(int number)
 {
-    struct loaded_font* req_font;
+    SPRITE* req_font;
     if(number >= 0)
     {
         req_font = &(p_font[number]);
@@ -96,9 +97,9 @@ struct loaded_font* load_number(int number)
 
 
 //Might cause a memory leak? because texture remains??
-MY_FONT* load_string_font(SDL_Renderer* renderer, SDL_Texture* texture, char* str)
+SPRITE* load_string_font(SDL_Renderer* renderer, SDL_Texture* texture, char* str)
 {
-    static MY_FONT myfont;
+    static SPRITE myfont;
     //if(fonts_loaded)
     //{
         myfont.texture = texture;
