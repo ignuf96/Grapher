@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <SDL2/SDL_image.h>
+#include <limits.h> /* MAX VALUE FOR GRAPH LONG_MAX */
 #include <unistd.h> // For sleep();
 
 // Font things
@@ -36,6 +37,11 @@
 #define HORIZONTAL_LINE_HEIGHT PIXEL_HEIGHT/16
 #define VERTICAL_LINE_WIDTH PIXEL_WIDTH/28
 #define VERTICAL_LINE_HEIGHT PIXEL_HEIGHT
+#define GRAPH_VERTICAL_LINE_WIDTH PIXEL_WIDTH/28
+#define GRAPH_VERTICAL_LINE_HEIGHT PIXEL_HEIGHT
+#define GRAPH_HORIZONTAL_LINE_WIDTH PIXEL_WIDTH
+#define GRAPH_HORIZONTAL_LINE_HEIGHT PIXEL_HEIGHT/32
+
 
 SDL_Window* window;
 SDL_Renderer* renderer;
@@ -95,6 +101,9 @@ const float FPS_TARGET = 60.0f;
 SPRITE horizontal_line;
 SPRITE vertical_line;
 
+SPRITE graph_horizontal_line;
+SPRITE graph_vertical_line;
+
 void initialize(void)
 {
 	printf("Iniitializing\n\n");
@@ -110,24 +119,42 @@ void initialize(void)
 
 	char* horizontal_line_path = "/home/johnny/Documents/Projects/SDL/Grapher/horizontal_line.png";
 	char* vertical_line_path = "/home/johnny/Documents/Projects/SDL/Grapher/vertical_line.png";
+	char* graph_horizontal_line_path = "/home/johnny/Documents/Projects/SDL/Grapher/graph_horizontal_line.png";
+	char* graph_vertical_line_path = "/home/johnny/Documents/Projects/SDL/Grapher/graph_vertical_line.png";
 
-	SDL_Surface* surface = IMG_Load(horizontal_line_path);
-
-	horizontal_line.texture = SDL_CreateTextureFromSurface(renderer, surface);
+	SDL_Surface* surface1 = IMG_Load(horizontal_line_path);
+	horizontal_line.texture = SDL_CreateTextureFromSurface(renderer, surface1);
 	horizontal_line.rect.w = HORIZONTAL_LINE_WIDTH;
 	horizontal_line.rect.h = HORIZONTAL_LINE_HEIGHT;
 	horizontal_line.rect.x = 0;
 	horizontal_line.rect.y = PIXEL_HEIGHT/2;
-	SDL_FreeSurface(surface);
+	SDL_FreeSurface(surface1);
 
-	SDL_Surface* surface2 = IMG_Load(vertical_line_path);
+	SDL_Surface* surface2 = IMG_Load(graph_horizontal_line_path);
+	graph_horizontal_line.texture = SDL_CreateTextureFromSurface(renderer, surface2);
+	graph_horizontal_line.rect.w = GRAPH_HORIZONTAL_LINE_WIDTH;
+	graph_horizontal_line.rect.h = GRAPH_HORIZONTAL_LINE_HEIGHT;
+	graph_horizontal_line.rect.x = 0;
+	graph_horizontal_line.rect.y = PIXEL_HEIGHT/2;
+	SDL_FreeSurface(surface2);
 
+	SDL_Surface* surface3 = IMG_Load(vertical_line_path);
 	vertical_line.texture = SDL_CreateTextureFromSurface(renderer, surface2);
 	vertical_line.rect.w = VERTICAL_LINE_WIDTH;
 	vertical_line.rect.h = VERTICAL_LINE_HEIGHT;
 	vertical_line.rect.x = PIXEL_WIDTH/2;
 	vertical_line.rect.y = 0;
-	SDL_FreeSurface(surface2);
+	SDL_FreeSurface(surface3);
+
+	SDL_Surface* surface4 = IMG_Load(graph_vertical_line_path);
+	graph_vertical_line.texture = SDL_CreateTextureFromSurface(renderer, surface2);
+	graph_vertical_line.rect.w = GRAPH_VERTICAL_LINE_WIDTH;
+	graph_vertical_line.rect.h = GRAPH_VERTICAL_LINE_HEIGHT;
+	graph_vertical_line.rect.x = PIXEL_WIDTH/2;
+	graph_vertical_line.rect.y = 0;
+	SDL_FreeSurface(surface4);
+
+
 	conv_fvec(&mouse_speed.x, &mouse_speed.y);
 }
 
@@ -213,41 +240,33 @@ void conv_fvec(float* x, float* y)
 
 void draw_axes(void)
 {
-	SDL_SetRenderDrawColor(renderer, 145, 145, 145, 255);
-
-	//SDL_RenderCopy(renderer, horizontal_line.texture, NULL, &(horizontal_line.rect));
-	//SDL_RenderCopy(renderer, vertical_line.texture, NULL, &(vertical_line.rect));
-
 	coordinate_location.x = origin_offset.x + origin.x;
 	coordinate_location.y = origin_offset.y + origin.y;
 
-	// hmm this is wrong
-	//coordinate_location.x = origin.x+origin_offset.x/mouse_speed.x;
-	//coordinate_location.y = origin.y+origin_offset.y/mouse_speed.y;
-
-	/*
 	for(int count = 0, y = coordinate_location.y + (-spacing); count < render_distance.y; y += -spacing, count++)
 	{
-		SDL_RenderDrawLine(renderer, 0, y, PIXEL_WIDTH, y);
+		horizontal_line.rect.y = y;
+		SDL_RenderCopy(renderer, graph_horizontal_line.texture, NULL, &(horizontal_line.rect));
 	}
 
 	for(int count = 0, y = coordinate_location.y + (spacing); count < render_distance.y; y += spacing, count++)
 	{
-		SDL_RenderDrawLine(renderer, 0, y, window_width, y);
+		horizontal_line.rect.y = y;
+		SDL_RenderCopy(renderer, graph_horizontal_line.texture, NULL, &(horizontal_line.rect));
 	}
 
 	for(int count = 0, x = coordinate_location.x + (-spacing); count < render_distance.x; x += -spacing, count++)
 	{
-		SDL_RenderDrawLine(renderer, x, 0,  x, window_height);
+		vertical_line.rect.x = x;
+		SDL_RenderCopy(renderer, graph_vertical_line.texture, NULL, &(vertical_line.rect));
 	}
 
 	for(int count = 0, x = coordinate_location.x + (spacing); count < render_distance.x; x += spacing, count++)
 	{
-		SDL_RenderDrawLine(renderer, x, 0, x, window_height);
-
+		vertical_line.rect.x = x;
+		SDL_RenderCopy(renderer, graph_vertical_line.texture, NULL, &(vertical_line.rect));
 	}
-	SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-	*/
+
 	vertical_line.rect.x = coordinate_location.x;
 	SDL_RenderCopy(renderer, vertical_line.texture, NULL, &(vertical_line.rect));
 
