@@ -19,6 +19,10 @@
 // Window information for initialization
 #define WINDOW_TITLE "Grapher"
 
+
+// Let's try out same width and height. This will be our 'imaginary dimensions'
+// So if screen isn't 16:9.. it looks off. A possible fix would be to just change the imaginary units according to the aspect ratio of the screen
+// this will have to take into account screen dimension changes.
 #define PIXEL_WIDTH 16*3
 #define PIXEL_HEIGHT 9*3
 
@@ -27,7 +31,11 @@
 #define STARTING_WINDOW_WIDTH 1080
 #define WINDOW_POSX SDL_WINDOWPOS_UNDEFINED
 #define WINDOW_POSY SDL_WINDOWPOS_UNDEFINED
-// Let's try out same width and height. This will be our 'imaginary dimensions'
+
+#define HORIZONTAL_LINE_WIDTH PIXEL_WIDTH
+#define HORIZONTAL_LINE_HEIGHT PIXEL_HEIGHT/16
+#define VERTICAL_LINE_WIDTH PIXEL_WIDTH/28
+#define VERTICAL_LINE_HEIGHT PIXEL_HEIGHT
 
 SDL_Window* window;
 SDL_Renderer* renderer;
@@ -47,9 +55,9 @@ struct INT_VECTOR2 {
 };
 
 struct INT_VECTOR2 origin = {PIXEL_WIDTH/2, PIXEL_HEIGHT/2};
-struct INT_VECTOR2 origin_offset;
-struct FLOAT_VECTOR2 mouse_speed = {2222.0f, 2222.0f};
-struct INT_VECTOR2 coordinate_location;
+struct INT_VECTOR2 origin_offset = {0, 0};
+struct FLOAT_VECTOR2 mouse_speed = {211, 152};
+struct INT_VECTOR2 coordinate_location = {0, 0};
 
 // Variables for keeping track of how far away we're from the origin
 // Used for drawing graph
@@ -70,6 +78,8 @@ static void draw(void);
 static void draw_axes(void);
 static void draw_coordinates(void);
 static void draw_numbers(void);
+static void conv_ivec(int* a, int* b);
+static void conv_fvec(float* a, float* b);
 
 char* coordinate_str_x = "Coordinate X: ";
 char* coordinate_str_y = "Coordinate Y: ";
@@ -104,8 +114,8 @@ void initialize(void)
 	SDL_Surface* surface = IMG_Load(horizontal_line_path);
 
 	horizontal_line.texture = SDL_CreateTextureFromSurface(renderer, surface);
-	horizontal_line.rect.w = PIXEL_WIDTH;
-	horizontal_line.rect.h = PIXEL_HEIGHT/16;
+	horizontal_line.rect.w = HORIZONTAL_LINE_WIDTH;
+	horizontal_line.rect.h = HORIZONTAL_LINE_HEIGHT;
 	horizontal_line.rect.x = 0;
 	horizontal_line.rect.y = PIXEL_HEIGHT/2;
 	SDL_FreeSurface(surface);
@@ -113,19 +123,19 @@ void initialize(void)
 	SDL_Surface* surface2 = IMG_Load(vertical_line_path);
 
 	vertical_line.texture = SDL_CreateTextureFromSurface(renderer, surface2);
-	vertical_line.rect.w = PIXEL_WIDTH/28;
-	vertical_line.rect.h = PIXEL_HEIGHT;
+	vertical_line.rect.w = VERTICAL_LINE_WIDTH;
+	vertical_line.rect.h = VERTICAL_LINE_HEIGHT;
 	vertical_line.rect.x = PIXEL_WIDTH/2;
 	vertical_line.rect.y = 0;
 	SDL_FreeSurface(surface2);
-
+	conv_fvec(&mouse_speed.x, &mouse_speed.y);
 }
 
 int main(void)
 {
 	initialize();
 	//ADAPTIVE SYNC (-1) IMMEDIATE(0)
-	SDL_GL_SetSwapInterval(0);
+	//SDL_GL_SetSwapInterval(0);
 
 	while(!quit)
 	{
@@ -175,18 +185,31 @@ void draw(void)
 	SDL_RenderSetLogicalSize(renderer, PIXEL_WIDTH, PIXEL_HEIGHT);
 	draw_axes();
 	// using actual dimensions for text
-	//SDL_RenderSetLogicalSize(renderer, window_width_raw, window_height_raw);
-	//draw_coordinates();
+	SDL_RenderSetLogicalSize(renderer, window_width_raw, window_height_raw);
+	draw_coordinates();
 	//draw_numbers();
 	SDL_RenderPresent(renderer);
 }
 
+bool mouse_moved = false;
 bool mouse_held = false;
 bool first_click = false;
 int first_click_x = 0;
 int first_click_y = 0;
 Uint32 buttons;
 bool left_mousedown = false;
+
+void conv_ivec(int* x, int* y)
+{
+	*x/=PIXEL_WIDTH;
+	*y/=PIXEL_HEIGHT;
+}
+
+void conv_fvec(float* x, float* y)
+{
+	*x/=PIXEL_WIDTH;
+	*y/=PIXEL_HEIGHT;
+}
 
 void draw_axes(void)
 {
@@ -195,10 +218,12 @@ void draw_axes(void)
 	//SDL_RenderCopy(renderer, horizontal_line.texture, NULL, &(horizontal_line.rect));
 	//SDL_RenderCopy(renderer, vertical_line.texture, NULL, &(vertical_line.rect));
 
-	coordinate_location.x = origin.x+origin_offset.x/mouse_speed.x;
-	coordinate_location.y = origin.y+origin_offset.y/mouse_speed.y;
-	coordinate_location.x/=PIXEL_WIDTH;
-	coordinate_location.y/=PIXEL_HEIGHT;
+	coordinate_location.x = origin_offset.x + origin.x;
+	coordinate_location.y = origin_offset.y + origin.y;
+
+	// hmm this is wrong
+	//coordinate_location.x = origin.x+origin_offset.x/mouse_speed.x;
+	//coordinate_location.y = origin.y+origin_offset.y/mouse_speed.y;
 
 	/*
 	for(int count = 0, y = coordinate_location.y + (-spacing); count < render_distance.y; y += -spacing, count++)
@@ -228,8 +253,6 @@ void draw_axes(void)
 
 	horizontal_line.rect.y = coordinate_location.y;
 	SDL_RenderCopy(renderer, horizontal_line.texture, NULL, &(horizontal_line.rect));
-	//SDL_RenderDrawLine(renderer, 0, coordinate_location.y, window_width, coordinate_location.y);
-	//SDL_RenderDrawLine(renderer, coordinate_location.x, 0, coordinate_location.x, window_height);
 }
 
 /*void draw_numbers(void)
@@ -311,6 +334,7 @@ void mouse_event(void)
 	{
 		int x, y;
 		SDL_GetMouseState(&x, &y);
+		conv_ivec(&x, &y);
 
 		if(first_click == false)
 		{
@@ -318,24 +342,24 @@ void mouse_event(void)
 			first_click_x = x;
 			first_click_y = y;
 
-			first_click = true;
+			printf("Changing clickclickclick\n\n");
 		}
-		coordinate_location.x = x;
-		coordinate_location.y = y;
-
+		printf("X: %d\n", x);
+		printf("Y: %d\n", y);
 		// We get the difference between the coordinates from when
 		// the user first clicks the mouse and while they are moving the mouse
-		origin_offset.x += ((first_click_x -x)); //* (fps/1000));
-		origin_offset.y += ((first_click_y - y)); // * (fps/1000));
-		printf("Coordinate_location.x: %d\n", coordinate_location.x/PIXEL_WIDTH);
-		printf("Coordinate_location.y: %d\n", coordinate_location.y/PIXEL_HEIGHT);
+
+		origin_offset.x += ((first_click_x -x)) / mouse_speed.x; //* (fps/1000));
+		origin_offset.y += ((first_click_y - y)) / mouse_speed.y; // * (fps/1000));
+		//printf("Moving mouse: x: %d   y: %d\n", origin_offset.x, origin_offset.y);
+		//sleep(1);
 	}
 
 }
 /**/
 char num_buffer2[MAX_FONT_COORDINATES];
 
-/*void draw_coordinates(void)
+void draw_coordinates(void)
 {
 	memset(&coordinate_x, 0, MAX_FONT_COORDINATES-1);
 	memset(&coordinate_y, 0, MAX_FONT_COORDINATES-1);
@@ -362,7 +386,6 @@ char num_buffer2[MAX_FONT_COORDINATES];
 
 	SDL_DestroyTexture(temp_font_y->texture);
 }
-*/
 
 void input(void)
 {
@@ -381,6 +404,7 @@ void input(void)
 				break;
 
 			case SDL_MOUSEBUTTONDOWN:
+				mouse_moved = true;
 				if((e.type & SDL_BUTTON_LMASK) != 0)
 				{
 					left_mousedown = true;
@@ -392,13 +416,16 @@ void input(void)
 
 			case SDL_MOUSEBUTTONUP:
 				left_mousedown = false;
-					if((e.type & SDL_BUTTON_LMASK) != 0)
-					{
+				mouse_moved = false;
+					//if((e.type & SDL_BUTTON_LMASK) != 0)
+				//	{
 						first_click_x = 0;
 						first_click_y = 0;
 
 						first_click = false;
-					}
+						printf("MOUSE GOING UP\n");
+					//}
+
 
 
 					break;
@@ -431,8 +458,8 @@ void input(void)
 						window_width_raw = e.window.data1;
 						window_height_raw = e.window.data2;
 
-						origin.x = window_width_raw/2;
-						origin.y = window_height_raw/2;
+						//origin.x = window_width_raw/2;
+						//origin.y = window_height_raw/2;
 
 						render_distance.x = window_width_raw/spacing;
 						render_distance.y = window_height_raw/spacing;
