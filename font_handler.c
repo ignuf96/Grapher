@@ -17,7 +17,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <limits.h>
-#include <unistd.h>
+//#include <unistd.h>
 
 #define MAX_FONTS 10
 //#define DEFAULT_FONTS_SIZE 2000
@@ -35,7 +35,7 @@ void font_init(SDL_Renderer* renderer)
     TTF_Init();
     printf("Init font_handler.c\n\n");
 
-    if(!(coordinate_font = TTF_OpenFont("/home/johnny/Documents/Projects/SDL/Grapher/OpenSans-Regular.ttf", 24)))
+    if(!(coordinate_font = TTF_OpenFont("/home/johnny/Documents/Projects/SDL/Grapher/OpenSans-Regular.ttf", 35)))
     {
         printf("font path not found!!!\n");
         printf("TTF ERROR: %s\n", TTF_GetError());
@@ -52,7 +52,6 @@ void font_init(SDL_Renderer* renderer)
 
         if(!(positive_surface = TTF_RenderText_Solid(coordinate_font, num_buffer, text_color))){
             printf("Error creating surface from text");
-            sleep(5);
         }
         p_font[i].texture = SDL_CreateTextureFromSurface(renderer, positive_surface);
         p_font[i].rect.x = 0;
@@ -66,7 +65,6 @@ void font_init(SDL_Renderer* renderer)
         if(!(n_font[i].texture = SDL_CreateTextureFromSurface(renderer, negative_surface)))
         {
             printf("Error creating texture\n");
-            sleep(10);
         }
         n_font[i].rect.x = 0;
         n_font[i].rect.y = 0;
@@ -104,7 +102,7 @@ SPRITE* load_string_font(SDL_Renderer* renderer, SDL_Texture* texture, char* str
     //{
         myfont.texture = texture;
         SDL_Surface *surface;
-        SDL_Color textColor = { 0, 255, 0, 255};
+        SDL_Color textColor = { 255, 0, 0, 255};
 
         surface = TTF_RenderText_Solid(coordinate_font, str, textColor);
         myfont.texture = SDL_CreateTextureFromSurface(renderer, surface);
