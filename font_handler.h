@@ -4,7 +4,7 @@
 #include <SDL2/SDL_ttf.h>
 #include <stdio.h>
 
-#define MAX_FONT_COORDINATES 3000
+#define MAX_FONT_COORDINATES 30
 
 typedef struct SPRITE {
     SDL_Rect rect;
@@ -19,7 +19,7 @@ struct INT_VECTOR4 {
     int y;
 };
 
-SPRITE* load_number(int number);
+SPRITE* load_number(int number, int font_size);
 SPRITE* load_string_font(SDL_Renderer* renderer, SDL_Texture* texture, char* str);
 void font_init(SDL_Renderer* renderer);
 void font_cleanup(void);

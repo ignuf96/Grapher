@@ -162,7 +162,7 @@ int main(void)
 {
 	initialize();
 	//ADAPTIVE SYNC (-1) IMMEDIATE(0)
-	//SDL_GL_SetSwapInterval(0);
+	SDL_GL_SetSwapInterval(1);
 
 	while(!quit)
 	{
@@ -325,7 +325,7 @@ void draw_numbers(void)
 
 
 	{
-		SPRITE* d_font = load_number(count);
+		SPRITE* d_font = load_number(count, spacing);
 
 		d_font->rect.x = (origin.x + origin_offset.x + distance.x)*(window_width_raw/(PIXEL_WIDTH));
 		d_font->rect.y = (origin.y + origin_offset.y)*(window_height_raw/(PIXEL_HEIGHT));
@@ -336,7 +336,7 @@ void draw_numbers(void)
 	// This is one is a bit different. Don't know why we have to specifically assign -1 to count and not on the negative down for loop
 	for(count = 1, distance.y = 0, distance.x = 2; count < MAX_FONT_COORDINATES; count++, distance.x += (-spacing))
 	{
-		SPRITE* d_font = load_number(-count);
+		SPRITE* d_font = load_number(-count, 12);
 		d_font->rect.x = (origin.x + origin_offset.x + distance.x)*(window_width_raw/(PIXEL_WIDTH));
 		d_font->rect.y = (origin.y + origin_offset.y)*(window_height_raw/(PIXEL_HEIGHT));
 		SDL_RenderCopy(renderer, d_font->texture, NULL, &(d_font->rect));
