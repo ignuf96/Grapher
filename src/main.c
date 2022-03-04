@@ -12,6 +12,8 @@
 #include <SDL2/SDL_image.h>
 #include <limits.h> /* MAX VALUE FOR GRAPH LONG_MAX */
 #include <unistd.h> // For sleep();
+#include <SDL2/SDL_platform.h>
+#include "../include/platform.h"
 
 // Font things
 #include "../include/font_handler.h"
@@ -111,7 +113,12 @@ static void conv_fvec(float* a, float* b);
 void initialize(void)
 {
 	printf("Iniitializing\n\n");
-	PROJECT_PATH = SDL_GetBasePath();
+
+     PROJECT_PATH = SDL_GetBasePath();
+    #ifdef __ANDROID__
+        PROJECT_PATH = SDL_AndroidGetInternalStoragePath();
+	#endif
+
 	strncpy(horizontal_path_buffer, PROJECT_PATH, PATH_LENGTH-1);
 	strncpy(vertical_path_buffer, PROJECT_PATH, PATH_LENGTH-1);
 	strncpy(ghorizontal_path_buffer, PROJECT_PATH, PATH_LENGTH-1);
@@ -204,12 +211,6 @@ int main(void)
 		SDL_RenderCopy(renderer, temp->texture, NULL, &temp->rect);
 		SDL_RenderPresent(renderer);
 		SDL_DestroyTexture(temp->texture);
-
-		//printf("Printing fps: %d\n", (int)fps);
-
-		//if(fps > FPS_TARGET)
-			//SDL_Delay((fps-FPS_TARGET)/1000);
-
 	}
 
 	cleanup();

@@ -10,6 +10,7 @@
  */
 
 #include "../include/font_handler.h"
+#include "../include/platform.h"
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
@@ -17,6 +18,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <limits.h>
+#include <SDL2/SDL_system.h>
 //#include <unistd.h>
 
 #define MAX_FONTS 10
@@ -34,6 +36,7 @@ SPRITE n_font[MAX_FONT_COORDINATES][MAX_FONT_SIZES];
 static char* PROJECT_PATH;
 static char coordinate_path_buffer[PATH_LENGTH];
 static char number_path_buffer[PATH_LENGTH];
+enum OPERATING_SYSTEM OS;
 
 void font_init(SDL_Renderer* renderer)
 {
@@ -41,7 +44,12 @@ void font_init(SDL_Renderer* renderer)
     TTF_Init();
     printf("Init font_handler.c\n\n");
 
+    OS = get_platform();
+
     PROJECT_PATH = SDL_GetBasePath();
+    #ifdef __ANDROID__
+    PROJECT_PATH = SDL_AndroidGetInternalStoragePath();
+    #endif
     strncpy(coordinate_path_buffer, PROJECT_PATH, PATH_LENGTH-1);
 
     if(!(coordinate_font = TTF_OpenFont(strncat(coordinate_path_buffer, "assets/fonts/OpenSans-Regular.ttf", PATH_LENGTH-1), 35)))
