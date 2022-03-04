@@ -1,6 +1,5 @@
 /* TODO
 **
-**  1. Pixel independent world units. This is needed to add numbers to graph, scrolling, coordinates and will increase portability.
 **  2. Implement a constant frame-rate loop. Possibly 30-60 fps. This will help with smoothness of mouse gestures.
 **  3. Fix mouse gesture when swiping(currently inconsistent)
 **  4. Implement actual coordinates for entire graph.
@@ -12,7 +11,7 @@
 #include <stdbool.h>
 #include <SDL2/SDL_image.h>
 #include <limits.h> /* MAX VALUE FOR GRAPH LONG_MAX */
-//#include <unistd.h> // For sleep();
+#include <unistd.h> // For sleep();
 
 // Font things
 #include "../include/font_handler.h"
@@ -64,6 +63,7 @@ struct INT_VECTOR2 origin = {PIXEL_WIDTH/2, PIXEL_HEIGHT/2};
 struct INT_VECTOR2 origin_offset = {0, 0};
 struct FLOAT_VECTOR2 mouse_speed = {211, 152};
 struct INT_VECTOR2 coordinate_location = {0, 0};
+struct INT_VECTOR2 render_distance = {PIXEL_WIDTH*100, PIXEL_HEIGHT*100};
 
 // Variables for keeping track of how far away we're from the origin
 // Used for drawing graph
@@ -71,21 +71,6 @@ struct INT_VECTOR2 coordinate_location = {0, 0};
 // Used for drawing lines in the quadrants
 static float spacing = 2.0f;
 #define SPACING_LIMIT 22.0f
-
-struct INT_VECTOR2 render_distance = {PIXEL_WIDTH*100, PIXEL_HEIGHT*100};
-
-bool quit = false;
-
-static void initialize(void);
-static void input(void);
-static void cleanup(void);
-static void mouse_event(void);
-static void draw(void);
-static void draw_axes(void);
-static void draw_coordinates(void);
-static void draw_numbers(void);
-static void conv_ivec(int* a, int* b);
-static void conv_fvec(float* a, float* b);
 
 char* coordinate_str_x = "Coordinate X: ";
 char* coordinate_str_y = "Coordinate Y: ";
@@ -100,13 +85,40 @@ const float FPS_TARGET = 60.0f;
 
 SPRITE horizontal_line;
 SPRITE vertical_line;
-
 SPRITE graph_horizontal_line;
 SPRITE graph_vertical_line;
+
+bool quit = false;
+
+#define PATH_LENGTH 255
+static char* PROJECT_PATH;
+static char horizontal_path_buffer[PATH_LENGTH];
+static char vertical_path_buffer[PATH_LENGTH];
+static char ghorizontal_path_buffer[PATH_LENGTH];
+static char gvertical_path_buffer[PATH_LENGTH];
+
+static void initialize(void);
+static void input(void);
+static void cleanup(void);
+static void mouse_event(void);
+static void draw(void);
+static void draw_axes(void);
+static void draw_coordinates(void);
+static void draw_numbers(void);
+static void conv_ivec(int* a, int* b);
+static void conv_fvec(float* a, float* b);
 
 void initialize(void)
 {
 	printf("Iniitializing\n\n");
+	PROJECT_PATH = SDL_GetBasePath();
+	strncpy(horizontal_path_buffer, PROJECT_PATH, PATH_LENGTH-1);
+	strncpy(vertical_path_buffer, PROJECT_PATH, PATH_LENGTH-1);
+	strncpy(ghorizontal_path_buffer, PROJECT_PATH, PATH_LENGTH-1);
+	strncpy(gvertical_path_buffer, PROJECT_PATH, PATH_LENGTH-1);
+
+	printf("SDL: Path: %s\n", PROJECT_PATH);
+
 	SDL_Init(SDL_INIT_VIDEO);
 	window = SDL_CreateWindow(WINDOW_TITLE, WINDOW_POSX, WINDOW_POSY, STARTING_WINDOW_WIDTH, STARTING_WINDOW_HEIGHT, SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
 
@@ -117,10 +129,12 @@ void initialize(void)
 
 	font_init(renderer);
 
-	char* horizontal_line_path = "/home/johnny/Documents/Projects/SDL/Grapher/horizontal_line.png";
-	char* vertical_line_path = "/home/johnny/Documents/Projects/SDL/Grapher/vertical_line.png";
-	char* graph_horizontal_line_path = "/home/johnny/Documents/Projects/SDL/Grapher/graph_horizontal_line.png";
-	char* graph_vertical_line_path = "/home/johnny/Documents/Projects/SDL/Grapher/graph_vertical_line.png";
+	char* horizontal_line_path = strncat(horizontal_path_buffer, "assets/horizontal_line.png", PATH_LENGTH-1);
+	char* vertical_line_path = strncat(vertical_path_buffer, "assets/vertical_line.png", PATH_LENGTH-1);
+	char* graph_horizontal_line_path = strncat(ghorizontal_path_buffer, "assets/graph_horizontal_line.png", PATH_LENGTH-1);
+	char* graph_vertical_line_path = strncat(gvertical_path_buffer, "assets/graph_vertical_line.png", PATH_LENGTH-1);
+
+	printf("PATHS:%s\n%s\n%s\n%s\n", horizontal_line_path, vertical_line_path, graph_horizontal_line_path, graph_vertical_line_path);
 
 	SDL_Surface* surface1 = IMG_Load(horizontal_line_path);
 	horizontal_line.texture = SDL_CreateTextureFromSurface(renderer, surface1);

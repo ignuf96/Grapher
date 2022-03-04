@@ -30,24 +30,34 @@ char num_buffer[MAX_FONT_COORDINATES];
 SPRITE p_font[MAX_FONT_COORDINATES][MAX_FONT_SIZES];
 SPRITE n_font[MAX_FONT_COORDINATES][MAX_FONT_SIZES];
 
+#define PATH_LENGTH 255
+static char* PROJECT_PATH;
+static char coordinate_path_buffer[PATH_LENGTH];
+static char number_path_buffer[PATH_LENGTH];
+
 void font_init(SDL_Renderer* renderer)
 {
     fonts_loaded = true;
     TTF_Init();
     printf("Init font_handler.c\n\n");
 
-    if(!(coordinate_font = TTF_OpenFont("/home/johnny/Documents/Projects/SDL/Grapher/OpenSans-Regular.ttf", 35)))
+    PROJECT_PATH = SDL_GetBasePath();
+    strncpy(coordinate_path_buffer, PROJECT_PATH, PATH_LENGTH-1);
+
+    if(!(coordinate_font = TTF_OpenFont(strncat(coordinate_path_buffer, "assets/fonts/OpenSans-Regular.ttf", PATH_LENGTH-1), 35)))
     {
-        printf("font path not found!!!\n");
+        printf("font path not found!!!\n:::%s", coordinate_path_buffer);
         printf("TTF ERROR: %s\n", TTF_GetError());
     }
+    strncpy(number_path_buffer, PROJECT_PATH, PATH_LENGTH-1);
+    strncat(number_path_buffer, "assets/fonts/OpenSans-Regular.ttf", PATH_LENGTH-1);
     SDL_Color text_color = {0, 255, 0, 255};
     for(int i=0; i < MAX_FONT_COORDINATES; i++)
     {
         for(int j=0; j < MAX_FONT_SIZES; j++)
         {
 
-            TTF_Font* font_path = TTF_OpenFont("/home/johnny/Documents/Projects/SDL/Grapher/OpenSans-Regular.ttf", j);
+            TTF_Font* font_path = TTF_OpenFont(number_path_buffer, j);
 
             // memset(&num_buffer[0], '\0', DEFAULT_FONTS_SIZE-1);
             SDL_Surface* positive_surface;
@@ -80,7 +90,7 @@ void font_init(SDL_Renderer* renderer)
             SDL_FreeSurface(negative_surface);
             //TTF_CloseFont(coordinate_font);
 
-            TTF_CloseFont(font_path);
+            //TTF_CloseFont(font_path);
         }
     }
 
