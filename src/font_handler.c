@@ -33,10 +33,9 @@ SPRITE p_font[MAX_FONT_COORDINATES][MAX_FONT_SIZES];
 SPRITE n_font[MAX_FONT_COORDINATES][MAX_FONT_SIZES];
 
 #define PATH_LENGTH 255
-static char* PROJECT_PATH;
+//static char* PROJECT_PATH;
 static char coordinate_path_buffer[PATH_LENGTH];
 static char number_path_buffer[PATH_LENGTH];
-enum OPERATING_SYSTEM OS;
 
 void font_init(SDL_Renderer* renderer)
 {
@@ -44,30 +43,32 @@ void font_init(SDL_Renderer* renderer)
     TTF_Init();
     printf("Init font_handler.c\n\n");
 
-    OS = get_platform();
-
-    PROJECT_PATH = SDL_GetBasePath();
+ /*PROJECT_PATH = SDL_GetBasePath();
     #ifdef __ANDROID__
     PROJECT_PATH = SDL_AndroidGetInternalStoragePath();
     #endif
     strncpy(coordinate_path_buffer, PROJECT_PATH, PATH_LENGTH-1);
 
-    if(!(coordinate_font = TTF_OpenFont(strncat(coordinate_path_buffer, "assets/fonts/OpenSans-Regular.ttf", PATH_LENGTH-1), 35)))
-    {
+ //   if(!(coordinate_font = TTF_OpenFont(strncat(coordinate_path_buffer, "assets/fonts/OpenSans-Regular.ttf", PATH_LENGTH-1), 35)))
+ */
+ coordinate_font = TTF_OpenFont("../assets/fonts/OpenSans-Regular.ttf", 35);
+ /*   {
         printf("font path not found!!!\n:::%s", coordinate_path_buffer);
         printf("TTF ERROR: %s\n", TTF_GetError());
     }
     strncpy(number_path_buffer, PROJECT_PATH, PATH_LENGTH-1);
-    strncat(number_path_buffer, "assets/fonts/OpenSans-Regular.ttf", PATH_LENGTH-1);
+    strncat(number_path_buffer, "assets/fonts/OpenSans-Regular.ttf", PATH_LENGTH-1);*/
     SDL_Color text_color = {0, 255, 0, 255};
     for(int i=0; i < MAX_FONT_COORDINATES; i++)
     {
         for(int j=0; j < MAX_FONT_SIZES; j++)
         {
 
-            TTF_Font* font_path = TTF_OpenFont(number_path_buffer, j);
+        //    TTF_Font* font_path = TTF_OpenFont(number_path_buffer, j);
+        
+        TTF_Font* font_path = TTF_OpenFont("../assets/fonts/OpenSans-Regular.ttf", j);
 
-            // memset(&num_buffer[0], '\0', DEFAULT_FONTS_SIZE-1);
+             memset(&num_buffer[0], '\0', MAX_FONT_COORDINATES-1);
             SDL_Surface* positive_surface;
             SDL_Surface* negative_surface;
 
@@ -75,7 +76,9 @@ void font_init(SDL_Renderer* renderer)
 
             if(!(positive_surface = TTF_RenderText_Solid(font_path, num_buffer, text_color))){
                 printf("Error creating surface from text");
+              
             }
+          
             p_font[i][j].texture = SDL_CreateTextureFromSurface(renderer, positive_surface);
             p_font[i][j].rect.x = 0;
             p_font[i][j].rect.y = 0;
@@ -98,11 +101,9 @@ void font_init(SDL_Renderer* renderer)
             SDL_FreeSurface(negative_surface);
             //TTF_CloseFont(coordinate_font);
 
-            //TTF_CloseFont(font_path);
+            TTF_CloseFont(font_path);
         }
     }
-
-
 }
 
 SPRITE* load_number(int number, int font_size)
@@ -150,7 +151,7 @@ void font_cleanup(void)
     if(fonts_loaded)
     {
         //Cause seg fault
-        TTF_CloseFont(coordinate_font);
+       // TTF_CloseFont(coordinate_font);
     }
     for(int i=0; i < MAX_FONT_COORDINATES; i++)
     {
