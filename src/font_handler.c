@@ -19,7 +19,7 @@
 #include <stdbool.h>
 #include <limits.h>
 #include <SDL2/SDL_system.h>
-//#include <unistd.h>
+#include <unistd.h>
 
 #define MAX_FONTS 10
 #define MAX_FONT_SIZES 22
@@ -51,7 +51,8 @@ void font_init(SDL_Renderer* renderer)
 
  //   if(!(coordinate_font = TTF_OpenFont(strncat(coordinate_path_buffer, "assets/fonts/OpenSans-Regular.ttf", PATH_LENGTH-1), 35)))
  */
- coordinate_font = TTF_OpenFont("../assets/fonts/OpenSans-Regular.ttf", 35);
+ //   sleep(10);
+    coordinate_font = TTF_OpenFont("../assets/fonts/OpenSans-Regular.ttf", 35);
  /*   {
         printf("font path not found!!!\n:::%s", coordinate_path_buffer);
         printf("TTF ERROR: %s\n", TTF_GetError());
@@ -65,20 +66,20 @@ void font_init(SDL_Renderer* renderer)
         {
 
         //    TTF_Font* font_path = TTF_OpenFont(number_path_buffer, j);
-        
-        TTF_Font* font_path = TTF_OpenFont("../assets/fonts/OpenSans-Regular.ttf", j);
 
+        TTF_Font* font_path = TTF_OpenFont("../assets/fonts/OpenSans-Regular.ttf", j);
              memset(&num_buffer[0], '\0', MAX_FONT_COORDINATES-1);
             SDL_Surface* positive_surface;
             SDL_Surface* negative_surface;
 
             snprintf(num_buffer, MAX_FONT_COORDINATES-1, "%d", i);
 
+           // sleep(10);
             if(!(positive_surface = TTF_RenderText_Solid(font_path, num_buffer, text_color))){
                 printf("Error creating surface from text");
               
             }
-          
+            //sleep(10);
             p_font[i][j].texture = SDL_CreateTextureFromSurface(renderer, positive_surface);
             p_font[i][j].rect.x = 0;
             p_font[i][j].rect.y = 0;

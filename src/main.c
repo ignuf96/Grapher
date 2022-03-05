@@ -18,7 +18,7 @@
 
 // Window information for initialization
 #define WINDOW_TITLE "Grapher"
-
+enum ORIENTATION {PORTRAIT, LANDSCAPE} orientation;
 
 // Let's try out same width and height. This will be our 'imaginary
 // dimensions'
@@ -34,15 +34,15 @@ int PIXEL_HEIGHT;
 #define WINDOW_POSX SDL_WINDOWPOS_UNDEFINED
 #define WINDOW_POSY SDL_WINDOWPOS_UNDEFINED
 
-#define HORIZONTAL_LINE_WIDTH PIXEL_WIDTH
+#define HORIZONTAL_LINE_WIDTH 16*9*6
 #define HORIZONTAL_LINE_HEIGHT PIXEL_HEIGHT/16
 #define VERTICAL_LINE_WIDTH PIXEL_WIDTH/28
-#define VERTICAL_LINE_HEIGHT PIXEL_HEIGHT
+#define VERTICAL_LINE_HEIGHT 16*9*6
 
-#define GRAPH_HORIZONTAL_LINE_WIDTH PIXEL_WIDTH
+#define GRAPH_HORIZONTAL_LINE_WIDTH 16*9*6
 #define GRAPH_HORIZONTAL_LINE_HEIGHT PIXEL_HEIGHT/16
 #define GRAPH_VERTICAL_LINE_WIDTH PIXEL_WIDTH/28
-#define GRAPH_VERTICAL_LINE_HEIGHT PIXEL_HEIGHT
+#define GRAPH_VERTICAL_LINE_HEIGHT 16*9*6
 
 SDL_Window *window;
 SDL_Renderer *renderer;
@@ -94,13 +94,6 @@ SPRITE graph_vertical_line;
 
 bool quit = false;
 
-#define PATH_LENGTH 255
-char *PROJECT_PATH;
-static char horizontal_path_buffer[PATH_LENGTH];
-static char vertical_path_buffer[PATH_LENGTH];
-static char ghorizontal_path_buffer[PATH_LENGTH];
-static char gvertical_path_buffer[PATH_LENGTH];
-
 static void initialize(void);
 static void input(void);
 static void cleanup(void);
@@ -129,10 +122,12 @@ SDL_GetWindowSize(window, &window_width_raw, &window_height_raw);
 
 if(window_width_raw > window_height_raw)
 {
+	orientation = LANDSCAPE;
 	PIXEL_WIDTH = 16 * 6;
 	PIXEL_HEIGHT = 9 * 6;
 } else
 {
+	orientation = PORTRAIT;
 	PIXEL_WIDTH = 9 * 6;
 	PIXEL_HEIGHT = 16 * 6;	
 }
@@ -140,7 +135,8 @@ if(window_width_raw > window_height_raw)
 	origin.x = PIXEL_WIDTH / 2;
 	origin.y = PIXEL_HEIGHT / 2;
 	
-	render_distance.x = PIXEL_WIDTH * 100; 		render_distance.y = PIXEL_HEIGHT * 100;
+	render_distance.x = PIXEL_WIDTH * 1000;
+	render_distance.y = PIXEL_HEIGHT * 1000;
 	
 
 	int buffering;
@@ -150,7 +146,7 @@ if(window_width_raw > window_height_raw)
 
 	char *horizontal_line_path = "../assets/horizontal_line.png";
 
-	char *vertical_line_path = "../assets/vertical_line.png ";
+	char *vertical_line_path = "../assets/vertical_line.png";
 
 	char *graph_horizontal_line_path = "../assets/graph_horizontal_line.png";
 
@@ -526,17 +522,20 @@ void input(void)
 				// sleep(5);
 				window_width_raw = e.window.data1;
 				window_height_raw = e.window.data2;
+				printf("WINDOW CHANGED\n");
 				
-				
-if(window_width_raw > window_height_raw)
-{
-	PIXEL_WIDTH = 16 * 6;
-	PIXEL_HEIGHT = 9 * 6;
-} else
-{
-	PIXEL_WIDTH = 9 * 6;
-	PIXEL_HEIGHT = 16 * 6;	
-}
+
+				if(window_width_raw > window_height_raw)
+				{
+					orientation = LANDSCAPE;
+					PIXEL_WIDTH = 16 * 6;
+					PIXEL_HEIGHT = 9 * 6;
+				} else
+				{
+					orientation = PORTRAIT;
+					PIXEL_WIDTH = 9 * 6;
+					PIXEL_HEIGHT = 16 * 6;
+				}
 				printf("Window width raw: %d\nWindow Height raw: %d \n", window_width_raw,
 					   window_height_raw);
 
