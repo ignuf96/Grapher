@@ -173,13 +173,14 @@ int main(void)
 		strncat(buffconv, "FPS: ", MAX_FONT_COORDINATES - 1);
 		snprintf(&buffconv[5], MAX_FONT_COORDINATES - 5, "%d", (int)fps);
 		SDL_Texture *texture = NULL;
-		struct SPRITE *temp = load_string_font(renderer, texture, buffconv);
-		temp->rect.x = 0;
-		temp->rect.y = 200;
+		struct SPRITE temp;
+		load_string_font(renderer, &temp, texture, buffconv);
+		temp.rect.x = 0;
+		temp.rect.y = 200;
 
-		SDL_RenderCopy(renderer, temp->texture, NULL, &temp->rect);
+		SDL_RenderCopy(renderer, temp.texture, NULL, &temp.rect);
 		SDL_RenderPresent(renderer);
-		SDL_DestroyTexture(temp->texture);
+		SDL_DestroyTexture(temp.texture);
 	}
 
 	cleanup();
@@ -307,15 +308,17 @@ void draw_coordinates(void)
 	char *final_str_y = strncat(coordinate_y, num_buffer2, MAX_FONT_COORDINATES - 1);
 
 	SDL_Texture *texture = NULL;
-	SPRITE *temp_font_x = load_string_font(renderer, texture, final_str_x);
-	SDL_RenderCopy(renderer, temp_font_x->texture, NULL, &temp_font_x->rect);
-	SDL_DestroyTexture(temp_font_x->texture);
+	SPRITE temp_font_x;
+	load_string_font(renderer, &temp_font_x, texture, final_str_x);
+	SDL_RenderCopy(renderer, temp_font_x.texture, NULL, &temp_font_x.rect);
+	SDL_DestroyTexture(temp_font_x.texture);
 
-	SPRITE *temp_font_y = load_string_font(renderer, texture, final_str_y);
-	temp_font_y->rect.y = 75;
-	SDL_RenderCopy(renderer, temp_font_y->texture, NULL, &temp_font_y->rect);
+	SPRITE temp_font_y;
+	load_string_font(renderer, &temp_font_y, texture, final_str_y);
+	temp_font_y.rect.y = 75;
+	SDL_RenderCopy(renderer, temp_font_y.texture, NULL, &temp_font_y.rect);
 
-	SDL_DestroyTexture(temp_font_y->texture);
+	SDL_DestroyTexture(temp_font_y.texture);
 }
 
 void input(void)

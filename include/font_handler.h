@@ -20,7 +20,7 @@ struct INT_VECTOR4 {
 };
 
 SPRITE* load_number(int number, int font_size);
-SPRITE* load_string_font(SDL_Renderer* renderer, SDL_Texture* texture, char* str);
+void load_string_font(SDL_Renderer* renderer, SPRITE* sprite, SDL_Texture* texture, char* str);
 void font_init(SDL_Renderer* renderer);
 void font_cleanup(void);
 
