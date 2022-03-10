@@ -65,7 +65,7 @@ struct INT_VECTOR2
 
 struct INT_VECTOR2 origin;
 struct INT_VECTOR2 origin_offset = { 0, 0 };
-struct FLOAT_VECTOR2 mouse_speed = { 211, 152 };
+struct INT_VECTOR2 mouse_speed = { 210, 210 };
 struct INT_VECTOR2 coordinate_location = { 0, 0 };
 struct INT_VECTOR2 render_distance;
 
@@ -172,7 +172,7 @@ if(window_width_raw > window_height_raw)
 
 	SDL_Surface *surface3 = IMG_Load(vertical_line_path);
 	vertical_line.texture = SDL_CreateTextureFromSurface(renderer, surface3);
-	vertical_line.rect.w = VERTICAL_LINE_WIDTH;
+	vertical_line.rect.w = VERTICAL_LINE_WIDTH*5;
 	vertical_line.rect.h = VERTICAL_LINE_HEIGHT;
 	vertical_line.rect.x = PIXEL_WIDTH / 2;
 	vertical_line.rect.y = 0;
@@ -187,7 +187,7 @@ if(window_width_raw > window_height_raw)
 	SDL_FreeSurface(surface4);
 
 
-	conv_fvec(&mouse_speed.x, &mouse_speed.y);
+	conv_ivec(&mouse_speed.x, &mouse_speed.y);
 }
 
 int main(void)
@@ -210,6 +210,12 @@ int main(void)
 
 
 		fps = (frame_time > 0) ? 1000.0f / frame_time : 0.0f;
+		//if(frame_time > 0)
+		//{
+			//SDL_Delay(frame_time-FPS_TARGET);
+			//printf("SLEEPING:%d\n", frame_time);
+			//}
+
 		// Draw fps
 		char buffconv[MAX_FONT_COORDINATES] = { 0 };
 		strncat(buffconv, "FPS: ", MAX_FONT_COORDINATES - 1);
@@ -231,7 +237,7 @@ int main(void)
 
 void draw(void)
 {
-	SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+	SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255);
 	SDL_RenderClear(renderer);
 
 	// axes in imaginary size so it's scaled up or down depending on actual
@@ -375,6 +381,13 @@ void draw_numbers(void)
 
 }
 
+enum MOVEMENT {LEFT, RIGHT, UP, DOWN};
+enum MOVEMENT movement;
+bool moving_up = false;
+bool moving_down = false;
+bool moving_left = false;
+bool moving_right = false;
+
 void mouse_event(void)
 {
 	if (left_mousedown)
@@ -399,6 +412,55 @@ void mouse_event(void)
 		origin_offset.x += ((first_click_x - x)) / mouse_speed.x;	// *
 																	// (fps/1000));
 		origin_offset.y += ((first_click_y - y)) / mouse_speed.y;	// *
+
+		printf("First_click_x - x: %d\n\n", first_click_x-x);
+
+		if(first_click_x-x > 0)
+		{
+			movement = LEFT;
+			moving_left = true;
+			moving_right = false;
+		}
+		if(first_click_x-x < 0)
+		{
+			movement = RIGHT;
+			moving_right = true;
+			moving_left = false;
+		}
+		if(first_click_y-y > 0)
+		{
+			movement = UP;
+			moving_up = true;
+			moving_down = false;
+		}
+		if(first_click_y-y < 0)
+		{
+			movement = DOWN;
+			moving_down = true;
+			moving_up = false;
+		}
+
+		if(moving_up && moving_left)
+		{
+			printf("MOVING UP AND LEFT\n");
+		}
+
+		switch(movement)
+		{
+			case LEFT:
+				printf("MOVING LEFT\n");
+				break;
+			case RIGHT:
+				printf("MOVING RIGHT\n");
+				break;
+			case UP:
+				printf("MOVING UP\n");
+				break;
+			case DOWN:
+				printf("MOVING DOWN\n");
+				break;
+		}
+
 																	// (fps/1000));
 		// printf("Moving mouse: x: %d y: %d\n", origin_offset.x,
 		// origin_offset.y);
@@ -507,7 +569,6 @@ void input(void)
 					spacing--;
 				// } else spacing = SPACING_LIMIT;
 			}
-
 			break;
 
 		case SDL_WINDOWEVENT:
