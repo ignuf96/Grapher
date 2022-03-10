@@ -118,37 +118,37 @@ void initialize(void)
 		PIXEL_HEIGHT = 16 * 6;
 	}
 
-		origin.x = PIXEL_WIDTH / 2;
-		origin.y = PIXEL_HEIGHT / 2;
+	origin.x = PIXEL_WIDTH / 2;
+	origin.y = PIXEL_HEIGHT / 2;
 
-		render_distance.x = PIXEL_WIDTH * 10;
-		render_distance.y = PIXEL_HEIGHT * 10;
+	render_distance.x = PIXEL_WIDTH * 10;
+	render_distance.y = PIXEL_HEIGHT * 10;
 
-		// Bug... Doesn't fill space with PIXEL_WIDTH
-		horizontal_line_width = render_distance.x;
-		horizontal_line_height = PIXEL_HEIGHT/13;
-		vertical_line_width = PIXEL_WIDTH/13;
-		vertical_line_height = render_distance.y;
-		graph_horizontal_line_width = render_distance.x;
-		graph_horizontal_line_height = PIXEL_HEIGHT/12;
-		graph_vertical_line_height = render_distance.y;
-		graph_vertical_line_width = PIXEL_WIDTH/16;
+	// Bug... Doesn't fill space with PIXEL_WIDTH
+	horizontal_line_width = render_distance.x;
+	horizontal_line_height = PIXEL_HEIGHT/13;
+	vertical_line_width = PIXEL_WIDTH/13;
+	vertical_line_height = render_distance.y;
+	graph_horizontal_line_width = render_distance.x;
+	graph_horizontal_line_height = PIXEL_HEIGHT/12;
+	graph_vertical_line_height = render_distance.y;
+	graph_vertical_line_width = PIXEL_WIDTH/16;
 
-		int buffering;
-		SDL_GL_GetAttribute(SDL_GL_DOUBLEBUFFER, &buffering);
+	int buffering;
+	SDL_GL_GetAttribute(SDL_GL_DOUBLEBUFFER, &buffering);
 
-		font_init(renderer);
+	font_init(renderer);
 
-		create_sprite(&horizontal_line, "../assets/horizontal_line.png",
-					  horizontal_line_width, horizontal_line_height, 0, PIXEL_HEIGHT/2);
-		create_sprite(&graph_horizontal_line, "../assets/graph_horizontal_line.png",
-					  graph_horizontal_line_width, graph_horizontal_line_height, 0, PIXEL_HEIGHT/2);
-		create_sprite(&vertical_line, "../assets/vertical_line.png",
-					  vertical_line_width, vertical_line_height, PIXEL_WIDTH/2, 0);
-		create_sprite(&graph_vertical_line, "../assets/graph_vertical_line.png",
-					  graph_vertical_line_width, graph_vertical_line_height, PIXEL_WIDTH/2, 0);
+	create_sprite(&horizontal_line, "../assets/horizontal_line.png",
+					horizontal_line_width, horizontal_line_height, 0, PIXEL_HEIGHT/2);
+	create_sprite(&graph_horizontal_line, "../assets/graph_horizontal_line.png",
+					graph_horizontal_line_width, graph_horizontal_line_height, 0, PIXEL_HEIGHT/2);
+	create_sprite(&vertical_line, "../assets/vertical_line.png",
+					vertical_line_width, vertical_line_height, PIXEL_WIDTH/2, 0);
+	create_sprite(&graph_vertical_line, "../assets/graph_vertical_line.png",
+					graph_vertical_line_width, graph_vertical_line_height, PIXEL_WIDTH/2, 0);
 
-		conv_fvec(&mouse_speed.x, &mouse_speed.y);
+	conv_fvec(&mouse_speed.x, &mouse_speed.y);
 }
 
 int main(void)
