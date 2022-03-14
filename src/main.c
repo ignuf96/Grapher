@@ -80,7 +80,7 @@ SPRITE graph_vertical_line;
 
 bool quit = false;
 
-enum DIRECTION{UP, DOWN, LEFT, RIGHT, NONE}direction=NONE;
+enum DIRECTION{D_UP, D_DOWN, D_LEFT, D_RIGHT, D_NONE}direction=D_NONE;
 
 static void initialize(void);
 static void input(void);
@@ -92,7 +92,8 @@ static void draw_numbers(int position, int offset, enum DIRECTION direction, int
 static void conv_ivec(int *a, int *b);
 static void conv_fvec(float *a, float *b);
 static void create_sprite(SPRITE* sprite, char* path, int width, int height, int x, int y);
-static void draw_line(int x, int y, int render_distance_x, int render_distance_y, int spacing, SPRITE* sprite);
+static void draw_lines(int x, int y, int x1, int y2, int amount, SPRITE* sprite);
+static bool is_on_screen(SDL_Rect rect);
 
 void initialize(void)
 {
@@ -123,8 +124,8 @@ void initialize(void)
 	origin.x = pixel_width / 2;
 	origin.y = pixel_height / 2;
 
-	render_distance.x = pixel_width * 10;
-	render_distance.y = pixel_height * 10;
+	render_distance.x = pixel_width*10;
+	render_distance.y = pixel_height*10;
 
 	// Bug... Doesn't fill space with pixel_width
 	horizontal_line_width = render_distance.x;
@@ -203,13 +204,32 @@ void draw(void)
 	coordinate_location.x = origin_offset.x + origin.x;
 	coordinate_location.y = origin_offset.y + origin.y;
 	//draw_axes();
-	draw_line(coordinate_location.x, 0, render_distance.x, 0, spacing, &graph_vertical_line);
-	draw_line(coordinate_location.x, 0, render_distance.x, 0, -spacing, &graph_vertical_line);
-	draw_line(0, coordinate_location.y, 0, render_distance.y, spacing, &graph_horizontal_line);
-	draw_line(0, coordinate_location.y, 0, render_distance.y, -spacing, &graph_horizontal_line);
+	int render_max = 300000;
+	int lines_to_draw = INT_MAX-1;
+	// setting coordinate_location.x or coordinate_location.y makes the lines move as the mouse moves
+	// Right now, the lines are limited by pixel_width or pixel_height.
+	// We want to draw the minimum as to not impact performance. This will have the consequence that we will have to make an illusion
+	// so it appears there's an infinite graph
+	draw_lines(coordinate_location.x, -pixel_height,
+			   coordinate_location.x, pixel_height, render_max, &graph_vertical_line);
+	draw_lines(-pixel_width+(origin_offset.x), 0+coordinate_location.y, pixel_width+(origin_offset.x),
+			   0+coordinate_location.y, render_max, &graph_horizontal_line);
 
-	draw_line(0, coordinate_location.y, 0, 1, 0, &horizontal_line);
-	draw_line(coordinate_location.x, 0, 1, 0, 0, &vertical_line);
+
+	draw_lines(coordinate_location.x, -pixel_height+(origin_offset.y), coordinate_location.x,
+			   pixel_height+(origin_offset.y), -render_max, &graph_vertical_line);
+	draw_lines(-pixel_width+(origin_offset.x), 0+coordinate_location.y,
+			   pixel_width+(origin_offset.x), 0+coordinate_location.y, -render_max, &graph_horizontal_line);
+
+	//printf("Origin offset.x: %d\nOrigin offset.y: %d\n", origin_offset.x, origin_offset.y);
+	//draw_lines(0, coordinate_location.y, D_RIGHT, 3000, &graph_horizontal_line);
+	//draw_lines(0, coordinate_location.y, D_LEFT, 3000, &graph_horizontal_line);
+
+	//draw_lines(0, coordinate_location.y, D_UP, 1, &horizontal_line);
+	//draw_lines(coordinate_location.x, 0, D_LEFT, 1, &vertical_line);
+
+	draw_lines(coordinate_location.x, -pixel_height, coordinate_location.x, pixel_height, 1, &vertical_line);
+	draw_lines(-pixel_width, 0+coordinate_location.y, pixel_width, 0+coordinate_location.y, 1, &horizontal_line);
 
 	// using actual dimensions for text
 	SDL_RenderSetLogicalSize(renderer, window_width_raw, window_height_raw);
@@ -217,12 +237,9 @@ void draw(void)
 
 	int number = 1;
 	int starting_line = 1;
-	direction = RIGHT;
-	int distance = spacing;
-	//draw_numbers(number, starting_line, direction, distance);
+	//draw_numbers(number, starting_line, D_RIGHT, distance);
 	number = 1;
 	starting_line = 2;
-	direction = LEFT;
 	//draw_numbers(number, starting_line, direction, distance);
 	//draw_numbers(0, 0, 1, spacing);
 	//draw_numbers(0, 0, -1, -spacing);
@@ -230,35 +247,69 @@ void draw(void)
 	//SDL_RenderPresent(renderer);
 }
 
-void draw_line(int x, int y, int render_distance_x, int render_distance_y, int spacing, SPRITE* sprite)
+/*
+bool is_on_screen(SDL_Rect rect)
 {
-	int amount = (x > 0) ? render_distance_x : render_distance_y;
-	int draw_location = (x > 0) ? x : y;
+	bool is_in_view = false;
 
-	for (int count = 0, axis = draw_location; count < amount;
-		axis += (spacing), count++)
+	if((rect.x) > (0 + origin_offset.x) && (rect.x+origin_offset.x) < (pixel_width + origin_offset.x))
 	{
-		if(x > 0)
+		is_in_view = true;
+	}
+	return is_in_view;
+}
+*/
+
+void draw_lines(int x, int y, int x1, int y2, int amount, SPRITE* sprite)
+{
+// This function will either draw one or more lines
+// If x and x1 are the same value & amount > 1 then we assume only y is increasing and vice versa
+// If amount is negative we get the inverse and draw the opposite way
+
+	int draw_location;
+	if(x == x1)
+		draw_location = x;
+	else if(y == y2)
+		draw_location = y;
+
+	int line_distance;
+
+	if(amount >= 0)
+		line_distance = spacing;
+	else if(amount < 0)
+	{
+		line_distance = -spacing;
+		amount = -amount;
+	}
+
+	for (int count = 1, axis = draw_location; count <= amount;
+		axis += (line_distance), count++)
+	{
+		if(x == x1)
 			sprite->rect.x = axis;
-		else {
+		else if(y == y2){
 			sprite->rect.y = axis;
 		}
-		SDL_RenderCopy(renderer, sprite->texture, NULL,
-					   &(sprite->rect));
+//		if(is_on_screen(sprite->rect))
+	//	{
+			SDL_RenderCopy(renderer, sprite->texture, NULL,
+						   &(sprite->rect));
+		//}
 	}
 }
 
 void draw_numbers(int number, int starting_line, enum DIRECTION direction, int distance)
 {
+
 //	int distance = (distance_x != 0) ? distance_x : distance_y;
 	int font_size = spacing;
 	int line = starting_line;
 
-	for (; number < MAX_FONT_COORDINATES; number++, line += (direction==UP || direction==RIGHT) ? distance : -distance)
+	for (; number < MAX_FONT_COORDINATES; number++, line += (direction==D_UP || direction==D_RIGHT) ? distance : -distance)
 	{
 		SPRITE *d_font = load_number(number, 17);
 
-		if(direction == LEFT || direction == RIGHT)
+		if(direction == D_LEFT || direction == D_RIGHT)
 		{
 			d_font->rect.x = (origin.x + origin_offset.x + line) * (window_width_raw / (pixel_width));
 			d_font->rect.y = (origin.y + origin_offset.y) * (window_height_raw / (pixel_height));
