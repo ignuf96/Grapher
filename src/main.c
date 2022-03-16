@@ -4,6 +4,9 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_mouse.h>
 #include <SDL2/SDL_render.h>
+#include <SDL2/SDL_stdinc.h>
+#include <SDL2/SDL_timer.h>
+#include <SDL2/SDL_video.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -54,14 +57,17 @@ struct INT_VECTOR2
 
 struct INT_VECTOR2 origin;
 struct INT_VECTOR2 origin_offset = { 0, 0 };
-struct FLOAT_VECTOR2 mouse_speed = { 211, 152 };
+struct FLOAT_VECTOR2 mouse_speed = { 200, 200 };
 struct INT_VECTOR2 coordinate_location = { 0, 0 };
 struct INT_VECTOR2 render_distance;
 
 // Variables for keeping track of how far away we're from the origin
 // Used for drawing graph
 // Amount of space away from y and x axis
-// Used for drawing lines in the quadrants
+// Used for drawing lines in the quadrant
+//
+//
+// s
 #define STARTING_SPACING 2.0
 static int spacing = STARTING_SPACING;
 #define SPACING_LIMIT 8.0
@@ -165,32 +171,33 @@ int main(void)
 	// ADAPTIVE SYNC (-1) IMMEDIATE(0)
 	SDL_GL_SetSwapInterval(1);
 
+	Uint32 time_step_ms = 1000 / 60;
+	Uint32 next_game_step = SDL_GetTicks(); // initial value
+											//
 	while (!quit)
 	{
-		Uint32 start_time = SDL_GetTicks();
-		Uint32 frame_time;
+		Uint32 now = SDL_GetTicks();
 
-		input();
-		draw();
+		if(next_game_step <= now)
+		{
+			int computer_is_too_slow_limit = 30;
 
-		frame_time = SDL_GetTicks() - start_time;
-		fps = (frame_time > 0) ? 1000.0f / frame_time : 0.0f;
 
-		// Draw fps
-		char buffconv[MAX_FONT_NUMBERS] = { 0 };
-		strncat(buffconv, "FPS: ", MAX_FONT_NUMBERS - 1);
-		snprintf(&buffconv[5], MAX_FONT_NUMBERS - 5, "%d", (int)fps);
-		SDL_Texture *texture = NULL;
-		struct SPRITE temp;
-		load_string_font(renderer, &temp, texture, buffconv);
-		temp.rect.x = 0;
-		temp.rect.y = 275;
+			while((next_game_step <= now) && (computer_is_too_slow_limit--))
+			{
+				draw();
+				next_game_step += time_step_ms;
+			}
+			input();
 
-		SDL_RenderCopy(renderer, temp.texture, NULL, &temp.rect);
-		SDL_RenderPresent(renderer);
+			SDL_RenderPresent(renderer);
 
-		SDL_DestroyTexture(temp.texture);
-	}
+		} else
+			SDL_Delay(next_game_step - now);
+
+
+}
+
 
 	cleanup();
 
@@ -362,7 +369,7 @@ int first_click_y = 0;
 Uint32 buttons;
 bool left_mousedown = false;
 
-void mouse_event(void)
+void mouse_event()
 {
 	int x, y;
 	if (left_mousedown)
@@ -378,8 +385,10 @@ void mouse_event(void)
 		}
 		// We get the difference between the coordinates from when
 		// the user first clicks the mouse and while they are moving the mouse
-		origin_offset.x += ((first_click_x - x)) / mouse_speed.x;
-		origin_offset.y += ((first_click_y - y)) / mouse_speed.y;
+		origin_offset.x += (((first_click_x - x)) / mouse_speed.x);
+		origin_offset.y += (((first_click_y - y)) / mouse_speed.y);
+
+		printf("Moving X by: %d\nMoving Y by: %d\n", origin_offset.x, origin_offset.y);
 	}
 }
 
@@ -448,7 +457,7 @@ void draw_coordinates(void)
 	SDL_DestroyTexture(temp_font_y.texture);
 }
 
-void input(void)
+void input()
 {
 	quit = false;
 
@@ -475,7 +484,8 @@ void input(void)
 			{
 			}
 			break;
-		case SDL_FINGERDOWN:
+			case SDL_FINGERDOWN:
+			SDL_GetMouseState(&mouse_x, &mouse_y);
 			mouse_moved = true;
 			left_mousedown = true;
 			break;
@@ -495,6 +505,7 @@ void input(void)
 			mouse_moved = false;
 			first_click_x = 0;
 			first_click_y = 0;
+			first_click = false;
 			break;
 		case SDL_MOUSEWHEEL:
 			if (e.wheel.y > 0)
