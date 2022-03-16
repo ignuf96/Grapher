@@ -536,20 +536,20 @@ void input()
 				if(window_width_raw > window_height_raw)
 				{
 					orientation = LANDSCAPE;
-					pixel_width = 16 * 6;
-					pixel_height = 9 * 6;
+					pixel_width = 16 * PIXEL_SCALE;
+					pixel_height = 9 * PIXEL_SCALE;
 				} else
 				{
 					orientation = PORTRAIT;
-					pixel_width = 9 * 6;
-					pixel_height = 16 * 6;
+					pixel_width = 9 * PIXEL_SCALE;
+					pixel_height = 16 * PIXEL_SCALE;
 				}
 
 				origin.x = pixel_width / 2;
 				origin.y = pixel_height / 2;
 
-				render_distance.x = pixel_width * 100;
-				render_distance.y = pixel_height * 100;
+				render_distance.x = pixel_width*10;
+				render_distance.y = pixel_height*10;
 
 				break;
 			}
