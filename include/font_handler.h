@@ -4,7 +4,10 @@
 #include <SDL2/SDL_ttf.h>
 #include <stdio.h>
 
-#define MAX_FONT_COORDINATES 30
+#define MAX_FONT_NUMBERS 300
+#define MIN_FONT_SIZE 28
+#define MAX_FONT_SIZE 36
+#define FONT_SIZE_RANGE MAX_FONT_SIZE - MIN_FONT_SIZE
 
 typedef struct SPRITE {
     SDL_Rect rect;

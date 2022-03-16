@@ -21,17 +21,15 @@
 #include <SDL2/SDL_system.h>
 #include <unistd.h>
 
-#define MAX_FONTS 10
-#define MAX_FONT_SIZES 22
-
 static bool fonts_loaded = false;
 TTF_Font *coordinate_font;
-char num_buffer[MAX_FONT_COORDINATES];
-
-SPRITE p_font[MAX_FONT_COORDINATES][MAX_FONT_SIZES];
-SPRITE n_font[MAX_FONT_COORDINATES][MAX_FONT_SIZES];
+char num_buffer[MAX_FONT_NUMBERS+1];
 
 #define PATH_LENGTH 255
+
+SPRITE p_font[MAX_FONT_NUMBERS+1][FONT_SIZE_RANGE+1];
+SPRITE n_font[MAX_FONT_NUMBERS+1][FONT_SIZE_RANGE+1];
+
 
 void font_init(SDL_Renderer* renderer)
 {
@@ -41,16 +39,16 @@ void font_init(SDL_Renderer* renderer)
     coordinate_font = TTF_OpenFont("../assets/fonts/OpenSans-Regular.ttf", 35);
     SDL_Color text_color = {0, 255, 0, 255};
 
-    for(int i=0; i < MAX_FONT_COORDINATES; i++)
+    for(int i=0; i < MAX_FONT_NUMBERS; i++)
     {
-        for(int j=0; j < MAX_FONT_SIZES; j++)
+        for(int j=MIN_FONT_SIZE; j < MAX_FONT_SIZE; j++)
         {
             TTF_Font* font_path = TTF_OpenFont("../assets/fonts/OpenSans-Regular.ttf", j);
-            memset(&num_buffer[0], '\0', MAX_FONT_COORDINATES-1);
+            memset(&num_buffer[0], '\0', MAX_FONT_NUMBERS);
             SDL_Surface* positive_surface;
             SDL_Surface* negative_surface;
 
-            snprintf(num_buffer, MAX_FONT_COORDINATES-1, "%d", i);
+            snprintf(num_buffer, MAX_FONT_NUMBERS, "%d", i);
 
             positive_surface = TTF_RenderText_Solid(font_path, num_buffer, text_color);
 
@@ -60,7 +58,7 @@ void font_init(SDL_Renderer* renderer)
             p_font[i][j].rect.w = positive_surface->w;
             p_font[i][j].rect.h = positive_surface->h;
 
-            snprintf(num_buffer, MAX_FONT_COORDINATES-1, "%d", -i);
+            snprintf(num_buffer, MAX_FONT_NUMBERS, "%d", -i);
             negative_surface = TTF_RenderText_Solid(font_path, num_buffer, text_color);
             if(!(n_font[i][j].texture = SDL_CreateTextureFromSurface(renderer, negative_surface)))
             {
@@ -113,17 +111,15 @@ void load_string_font(SDL_Renderer* renderer, SPRITE* sprite, SDL_Texture* textu
 
     }
 }
-
 void font_cleanup(void)
 {
     if(fonts_loaded)
     {
         //Causes seg fault
         //TTF_CloseFont(coordinate_font);
-
-        for(int i=0; i < MAX_FONT_COORDINATES; i++)
+        for(int i=0; i < MAX_FONT_NUMBERS; i++)
         {
-            for(int j=0; j < MAX_FONT_SIZES; j++)
+            for(int j=MIN_FONT_SIZE; j < MAX_FONT_SIZE; j++)
             {
                 SDL_DestroyTexture(p_font[i][j].texture);
                 SDL_DestroyTexture(n_font[i][j].texture);
