@@ -26,23 +26,23 @@
 
 // Let's try out same width and height. This will be our 'imaginary
 // dimensions' 16:9 if landscape, 9:16 if portrait. If width > height we assume screen is landscape and vice versa.
-int pixel_width;
-int pixel_height;
+static int pixel_width;
+static int pixel_height;
 #define PIXEL_SCALE 2
 
-enum ORIENTATION {LANDSCAPE, PORTRAIT} orientation;
+static enum ORIENTATION {LANDSCAPE, PORTRAIT} orientation;
 
-int horizontal_line_width, horizontal_line_height;
-int vertical_line_width, vertical_line_height;
-int graph_horizontal_line_width, graph_horizontal_line_height;
-int graph_vertical_line_width, graph_vertical_line_height;
+static int horizontal_line_width, horizontal_line_height;
+static int vertical_line_width, vertical_line_height;
+static int graph_horizontal_line_width, graph_horizontal_line_height;
+static int graph_vertical_line_width, graph_vertical_line_height;
 
-SDL_Window *window;
-SDL_Renderer *renderer;
-SDL_Event e;
+static SDL_Window *window;
+static SDL_Renderer *renderer;
+static SDL_Event e;
 
-int window_width_raw;
-int window_height_raw;
+static int window_width_raw;
+static int window_height_raw;
 
 struct FLOAT_VECTOR2
 {
@@ -55,11 +55,11 @@ struct INT_VECTOR2
 	int y;
 };
 
-struct INT_VECTOR2 origin;
-struct INT_VECTOR2 origin_offset = { 0, 0 };
-struct FLOAT_VECTOR2 mouse_speed = { 200, 200 };
-struct INT_VECTOR2 coordinate_location = { 0, 0 };
-struct INT_VECTOR2 render_distance;
+static struct INT_VECTOR2 origin;
+static struct INT_VECTOR2 origin_offset = { 0, 0 };
+static struct FLOAT_VECTOR2 mouse_speed = { 200, 200 };
+static struct INT_VECTOR2 coordinate_location = { 0, 0 };
+static struct INT_VECTOR2 render_distance;
 
 // Variables for keeping track of how far away we're from the origin
 // Used for drawing graph
@@ -72,25 +72,23 @@ struct INT_VECTOR2 render_distance;
 static int spacing = STARTING_SPACING;
 #define SPACING_LIMIT 8.0
 
-char *coordinate_str_x = "Coordinate X: ";
-char *coordinate_str_y = "Coordinate Y: ";
+static float fps;
+static const float FPS_TARGET = 60.0f;
 
-char coordinate_x[MAX_FONT_NUMBERS];
-char coordinate_y[MAX_FONT_NUMBERS];
+static SPRITE horizontal_line;
+static SPRITE vertical_line;
+static SPRITE graph_horizontal_line;
+static SPRITE graph_vertical_line;
 
-float fps;
-const float FPS_TARGET = 60.0f;
+static enum DIRECTION{D_UP, D_DOWN, D_LEFT, D_RIGHT, D_NONE}direction=D_NONE;
 
-SPRITE horizontal_line;
-SPRITE vertical_line;
-SPRITE graph_horizontal_line;
-SPRITE graph_vertical_line;
+static int mouse_x, mouse_y;
 
-bool quit = false;
+#define MAX_STR_BUFFER 100
+static char str_buffer[MAX_STR_BUFFER-1];
+static char str_num_buffer[MAX_STR_BUFFER];
 
-enum DIRECTION{D_UP, D_DOWN, D_LEFT, D_RIGHT, D_NONE}direction=D_NONE;
-
-int mouse_x, mouse_y;
+static bool quit = false;
 
 static void initialize(void);
 static void input(void);
@@ -104,7 +102,8 @@ static void conv_fvec(float *a, float *b);
 static void create_sprite(SPRITE* sprite, char* path, int width, int height, int x, int y);
 static void draw_lines(int x, int y, int x1, int y2, int amount, SPRITE* sprite);
 static bool is_on_screen(SDL_Rect rect);
-void draw_mouse_coordinates(int x, int y);
+static void draw_mouse_coordinates(int x, int y);
+static char* strincat(char* str1, int num_str, unsigned long length);
 
 void initialize(void)
 {
@@ -393,68 +392,64 @@ void mouse_event()
 }
 
 
-char m_coordinates[MAX_FONT_NUMBERS];
-char *m_coordinate_str_x = "Mouse Coordinate X: ";
-char *m_coordinate_str_y = "Mouse Coordinate Y: ";
-
 void draw_mouse_coordinates(int x, int y)
 {
-	memset(&coordinate_x, 0, MAX_FONT_NUMBERS);
-	memset(&coordinate_y, 0, MAX_FONT_NUMBERS);
-
-	strncpy(coordinate_x, m_coordinate_str_x, MAX_FONT_NUMBERS);
-	strncpy(coordinate_y, m_coordinate_str_y, MAX_FONT_NUMBERS);
-
-	snprintf(m_coordinates, MAX_FONT_NUMBERS, "%d", ((mouse_x/pixel_width)+(origin.x/pixel_width)));
-
-	char *final_str_x = strncat(coordinate_x, m_coordinates, MAX_FONT_NUMBERS);
-	snprintf(m_coordinates, MAX_FONT_NUMBERS, "%d", (mouse_y/pixel_height));
-	char *final_str_y = strncat(coordinate_y, m_coordinates, MAX_FONT_NUMBERS);
-
-	SDL_Texture *texture = NULL;
+	SDL_Texture *texture_x = NULL;
 	SPRITE temp_font_x;
-	load_string_font(renderer, &temp_font_x, texture, final_str_x);
-	temp_font_x.rect.y = 125;
+	char *finalized_str_x = strincat("Mouse X: ", ((mouse_x/pixel_width)+(origin.x/pixel_width)), MAX_STR_BUFFER-1);
+
+	load_string_font(renderer, &temp_font_x, texture_x, finalized_str_x);
+	temp_font_x.rect.y = 175;
 	SDL_RenderCopy(renderer, temp_font_x.texture, NULL, &temp_font_x.rect);
 	SDL_DestroyTexture(temp_font_x.texture);
 
+	SDL_Texture *texture_y = NULL;
 	SPRITE temp_font_y;
-	load_string_font(renderer, &temp_font_y, texture, final_str_y);
-	temp_font_y.rect.y = 175;
+	char *finalized_str_y = strincat("MOUSE Y: ", (mouse_y/pixel_height), MAX_STR_BUFFER-1);
+
+	load_string_font(renderer, &temp_font_y, texture_y, finalized_str_y);
+	temp_font_y.rect.y = 225;
 	SDL_RenderCopy(renderer, temp_font_y.texture, NULL, &temp_font_y.rect);
 
 	SDL_DestroyTexture(temp_font_y.texture);
 }
 
-
-char num_buffer2[MAX_FONT_NUMBERS];
-
 void draw_coordinates(void)
 {
-	memset(&coordinate_x, 0, MAX_FONT_NUMBERS);
-	memset(&coordinate_y, 0, MAX_FONT_NUMBERS);
-
-	strncpy(coordinate_x, coordinate_str_x, MAX_FONT_NUMBERS);
-	strncpy(coordinate_y, coordinate_str_y, MAX_FONT_NUMBERS);
-
-	snprintf(num_buffer2, MAX_FONT_NUMBERS, "%d", (int)-(origin_offset.x));
-
-	char *final_str_x = strncat(coordinate_x, num_buffer2, MAX_FONT_NUMBERS);
-	snprintf(num_buffer2, MAX_FONT_NUMBERS, "%d", (int)origin_offset.y);
-	char *final_str_y = strncat(coordinate_y, num_buffer2, MAX_FONT_NUMBERS);
-
-	SDL_Texture *texture = NULL;
+	// Draw X Coordinate
+	SDL_Texture *texture_x = NULL;
 	SPRITE temp_font_x;
-	load_string_font(renderer, &temp_font_x, texture, final_str_x);
+	char *finalized_str_x = strincat("Coordinate X: ", (int)-origin_offset.x, MAX_STR_BUFFER-1);
+
+	load_string_font(renderer, &temp_font_x, texture_x, finalized_str_x);
 	SDL_RenderCopy(renderer, temp_font_x.texture, NULL, &temp_font_x.rect);
 	SDL_DestroyTexture(temp_font_x.texture);
 
+	// Draw Y Coordinate
+	SDL_Texture *texture_y = NULL;
 	SPRITE temp_font_y;
-	load_string_font(renderer, &temp_font_y, texture, final_str_y);
+	char *finalized_str_y = strincat("Coordinate Y: ", (int)origin_offset.y, MAX_STR_BUFFER-1);
+
+	load_string_font(renderer, &temp_font_y, texture_y, finalized_str_y);
 	temp_font_y.rect.y = 75;
 	SDL_RenderCopy(renderer, temp_font_y.texture, NULL, &temp_font_y.rect);
 
 	SDL_DestroyTexture(temp_font_y.texture);
+}
+
+// combine a string and a number into one string
+char* strincat(char* str1, int num_str, unsigned long length)
+{
+
+	memset(&str_buffer, '\0', MAX_STR_BUFFER-1);
+	memset(&str_num_buffer, '\0', MAX_STR_BUFFER-1);
+
+	strncpy(str_buffer, str1, MAX_STR_BUFFER-1);
+	snprintf(str_num_buffer, MAX_STR_BUFFER-1, "%d", num_str);
+
+	char *finalized_str = strncat(str_buffer, str_num_buffer, MAX_STR_BUFFER-1);
+
+	return finalized_str;
 }
 
 void input()
