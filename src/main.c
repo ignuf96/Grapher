@@ -67,7 +67,7 @@ static struct INT_VECTOR2 render_distance;
 // Used for drawing lines in the quadrant
 //
 //
-// s
+//
 #define STARTING_SPACING 2.0
 static int spacing = STARTING_SPACING;
 #define SPACING_LIMIT 8.0
@@ -240,19 +240,19 @@ void draw(void)
 	draw_mouse_coordinates(mouse_x, mouse_y);
 
 	int number = 1;
-	int starting_line = 3;
+	int starting_line = 1;
 	draw_numbers(number, starting_line, D_RIGHT);
 
 	number = -1;
-	starting_line = -2;
+	starting_line = 1;
 	draw_numbers(number, starting_line, D_LEFT);
 
 	number = 1;
-	starting_line = 2;
+	starting_line = 4;
 	draw_numbers(number, starting_line, D_UP);
 
 	number = -1;
-	starting_line = -2;
+	starting_line = 0;
 	draw_numbers(number, starting_line, D_DOWN);
 
 }
@@ -340,21 +340,41 @@ void draw_numbers(int number, int starting_line, enum DIRECTION direction)
 			font_size = MIN_FONT_SIZE;
 	}
 
-	int distance = spacing;
-	for (; number < MAX_FONT_NUMBERS; number++, line += (direction==D_UP || direction==D_RIGHT) ? distance : -distance)
+	enum NUMBER_SIGN{NEGATIVE, POSITIVE}number_sign;
+	if(number < 0)
 	{
-		SPRITE *d_font = load_number(number, font_size);
+		number_sign = NEGATIVE;
+		number = -(number);
+	}
+	else
+	{
+		number_sign = POSITIVE;
+	}
 
-		if(direction == D_LEFT || direction == D_RIGHT)
+	int distance = spacing;
+	for (; number < MAX_FONT_NUMBERS; number++, line += ((direction==D_UP || direction==D_RIGHT) ? distance : -distance))
+	{
+
+		int num = number_sign ? number : -number;
+		SPRITE *d_font = load_number(num, font_size);
+
+
+		if(direction == D_LEFT)
 		{
-		d_font->rect.x = (origin.x + origin_offset.x + line+distance) * (window_width_raw / (pixel_width));
-		d_font->rect.y = (origin.y + origin_offset.y+2) * (window_height_raw / (pixel_height));
-		}else
+			d_font->rect.x = (origin.x + origin_offset.x + (line-distance)) * ((window_width_raw / (pixel_width))) + (d_font->rect.w);
+			d_font->rect.y = (origin.y + origin_offset.y) * ((window_height_raw / (pixel_height))) + (d_font->rect.h+30);
+		}else if(direction == D_RIGHT)
 		{
-			d_font->rect.x = (origin.x + origin_offset.x+2) * (window_width_raw / (pixel_width));
-			d_font->rect.y = (origin.y + origin_offset.y - line+distance) * (window_height_raw / (pixel_height));
+			d_font->rect.x = (origin.x + origin_offset.x + (line+distance)) * ((window_width_raw / (pixel_width))) + (d_font->rect.w);
+			d_font->rect.y = (origin.y + origin_offset.y) * ((window_height_raw / (pixel_height))) + (d_font->rect.h+30);
+		} else if(direction == D_DOWN){
+			d_font->rect.x = (origin.x + origin_offset.x) * (window_width_raw / (pixel_width)) + (d_font->rect.w+60);
+			d_font->rect.y = (origin.y + origin_offset.y + (-line)+distance) * ((window_height_raw / (pixel_height))) + (d_font->rect.h)+20;
+		} else if(direction == D_UP)
+		{
+			d_font->rect.x = (origin.x + origin_offset.x) * (window_width_raw / (pixel_width)) + (d_font->rect.w+60);
+			d_font->rect.y = (origin.y + origin_offset.y + (-line)+distance) * ((window_height_raw / (pixel_height))) + (-d_font->rect.h)+20;
 		}
-
 		SDL_RenderCopy(renderer, d_font->texture, NULL,
 					&(d_font->rect));
 	}
@@ -367,6 +387,7 @@ int first_click_x = 0;
 int first_click_y = 0;
 Uint32 buttons;
 bool left_mousedown = false;
+
 
 void mouse_event()
 {
