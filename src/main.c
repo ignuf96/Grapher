@@ -231,7 +231,7 @@ void draw(void)
 	draw_numbers(number, starting_line, D_LEFT);
 
 	number = 1;
-	starting_line = 4;
+	starting_line = 1;
 	draw_numbers(number, starting_line, D_UP);
 
 	number = -1;
@@ -359,23 +359,29 @@ void draw_numbers(int number, int starting_line, enum DIRECTION direction)
 
 		if(direction == D_LEFT)
 		{
-			d_font->rect.x = iconv_raw(origin.x + origin_offset.x + (line+distance));
-			d_font->rect.y = iconv_raw(origin.y + origin_offset.y);
+			d_font->rect.x = iconv_raw(origin.x + origin_offset.x + (line-distance));
+			d_font->rect.y = iconv_raw(origin.y + origin_offset.y + axes_horizontal_line_height);
 		}else if(direction == D_RIGHT)
 		{
-			d_font->rect.x = (origin.x + origin_offset.x + (line+distance)) * ((window_width_raw / (pixel_width))) + (d_font->rect.w);
-			d_font->rect.y = (origin.y + origin_offset.y) * ((window_height_raw / (pixel_height)));
+			d_font->rect.x = iconv_raw(origin.x + origin_offset.x + (line+distance));
+			d_font->rect.y = (origin.y + origin_offset.y+axes_horizontal_line_height) * ((window_height_raw / (pixel_height)));
 		} else if(direction == D_DOWN){
-			d_font->rect.x = (origin.x + origin_offset.x) * (window_width_raw / (pixel_width)) + (d_font->rect.w+60);
-			d_font->rect.y = (origin.y + origin_offset.y + (-line)+distance) * ((window_height_raw / (pixel_height))) + (d_font->rect.h)+20;
+			d_font->rect.x = (origin.x + origin_offset.x + axes_vertical_line_width) * (window_width_raw / (pixel_width));
+			d_font->rect.y = iconv_raw(origin.y + origin_offset.y - (line-distance))+graph_vertical_line_height;
 		} else if(direction == D_UP)
 		{
-			d_font->rect.x = (origin.x + origin_offset.x) * (window_width_raw / (pixel_width)) + (d_font->rect.w+60);
-			d_font->rect.y = (origin.y + origin_offset.y + (-line)+distance) * ((window_height_raw / (pixel_height))) + (-d_font->rect.h)+20;
+			d_font->rect.x = (origin.x + origin_offset.x + axes_vertical_line_width) * (window_width_raw / (pixel_width));
+			d_font->rect.y = iconv_raw(origin.y + origin_offset.y - (line+distance));
 		}
 		SDL_RenderCopy(renderer, d_font->texture, NULL,
 					&(d_font->rect));
 	}
+	SPRITE *d_font = load_number(0, font_size);
+	d_font->rect.x = iconv_raw(origin.x + origin_offset.x);
+	d_font->rect.y = iconv_raw(origin.y + origin_offset.y);
+
+	SDL_RenderCopy(renderer, d_font->texture, NULL,
+				   &(d_font->rect));
 }
 
 bool mouse_moved = false;
