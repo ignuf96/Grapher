@@ -27,8 +27,8 @@
 #define WINDOW_POSY SDL_WINDOWPOS_UNDEFINED
 
 // dimensions 16:9
-const static int pixel_width = 16;
-const static int pixel_height = 9;
+const static int pixel_width = 16*4;
+const static int pixel_height = 9*4;
 #define PIXEL_SCALE 1
 
 static int axes_horizontal_line_width, axes_horizontal_line_height;
@@ -113,6 +113,7 @@ void initialize(void)
 	window = SDL_CreateWindow(WINDOW_TITLE, WINDOW_POSX, WINDOW_POSY, 1920,
 							  1080, SDL_WINDOW_ALLOW_HIGHDPI);
 
+	SDL_SetWindowResizable(window, false);
 	renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 
 	SDL_GetWindowSize(window, &window_width_raw, &window_height_raw);
