@@ -2,10 +2,12 @@
    1. Implement a constant frame-rate loop. Possibly 30-60 fps. This will help with smoothness of mouse gestures.
 */
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_events.h>
 #include <SDL2/SDL_mouse.h>
 #include <SDL2/SDL_render.h>
 #include <SDL2/SDL_stdinc.h>
 #include <SDL2/SDL_timer.h>
+#include <SDL2/SDL_touch.h>
 #include <SDL2/SDL_video.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -24,16 +26,13 @@
 #define WINDOW_POSX SDL_WINDOWPOS_UNDEFINED
 #define WINDOW_POSY SDL_WINDOWPOS_UNDEFINED
 
-// Let's try out same width and height. This will be our 'imaginary
-// dimensions' 16:9 if landscape, 9:16 if portrait. If width > height we assume screen is landscape and vice versa.
-static int pixel_width;
-static int pixel_height;
-#define PIXEL_SCALE 2
+// dimensions 16:9
+const static int pixel_width = 16;
+const static int pixel_height = 9;
+#define PIXEL_SCALE 1
 
-static enum ORIENTATION {LANDSCAPE, PORTRAIT} orientation;
-
-static int horizontal_line_width, horizontal_line_height;
-static int vertical_line_width, vertical_line_height;
+static int axes_horizontal_line_width, axes_horizontal_line_height;
+static int axes_vertical_line_width, axes_vertical_line_height;
 static int graph_horizontal_line_width, graph_horizontal_line_height;
 static int graph_vertical_line_width, graph_vertical_line_height;
 
@@ -55,19 +54,16 @@ struct INT_VECTOR2
 	int y;
 };
 
-static struct INT_VECTOR2 origin;
+const static struct INT_VECTOR2 origin = { pixel_width/2, pixel_height/2};
+// Variables for keeping track of how far away we're from the origin
+// Used for drawing graph
 static struct INT_VECTOR2 origin_offset = { 0, 0 };
 static struct FLOAT_VECTOR2 mouse_speed = { 200, 200 };
 static struct INT_VECTOR2 coordinate_location = { 0, 0 };
-static struct INT_VECTOR2 render_distance;
+const static struct INT_VECTOR2 render_distance = {pixel_width, pixel_height};
 
-// Variables for keeping track of how far away we're from the origin
-// Used for drawing graph
 // Amount of space away from y and x axis
 // Used for drawing lines in the quadrant
-//
-//
-//
 #define STARTING_SPACING 2.0
 static int spacing = STARTING_SPACING;
 #define SPACING_LIMIT 8.0
@@ -75,8 +71,8 @@ static int spacing = STARTING_SPACING;
 static float fps;
 static const float FPS_TARGET = 60.0f;
 
-static SPRITE horizontal_line;
-static SPRITE vertical_line;
+static SPRITE axes_horizontal_line;
+static SPRITE axes_vertical_line;
 static SPRITE graph_horizontal_line;
 static SPRITE graph_vertical_line;
 
@@ -89,6 +85,8 @@ static char str_buffer[MAX_STR_BUFFER-1];
 static char str_num_buffer[MAX_STR_BUFFER];
 
 static bool quit = false;
+
+struct INT_VECTOR2 world_units = {16,9};
 
 static void initialize(void);
 static void input(void);
@@ -113,37 +111,21 @@ void initialize(void)
 	SDL_Init(SDL_INIT_VIDEO);
 
 	window = SDL_CreateWindow(WINDOW_TITLE, WINDOW_POSX, WINDOW_POSY, 1920,
-							  1080, SDL_WINDOW_RESIZABLE);
+							  1080, SDL_WINDOW_ALLOW_HIGHDPI);
 
 	renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 
 	SDL_GetWindowSize(window, &window_width_raw, &window_height_raw);
 
-	if(window_width_raw > window_height_raw)
-	{
-		orientation = LANDSCAPE;
-		pixel_width = 16 * PIXEL_SCALE;
-		pixel_height = 9 * PIXEL_SCALE;
-	} else
-	{
-		orientation = PORTRAIT;
-		pixel_width = 9 * PIXEL_SCALE;
-		pixel_height = 16 * PIXEL_SCALE;
-	}
+	axes_horizontal_line_width = render_distance.x;
+	axes_horizontal_line_height = 1*PIXEL_SCALE;
 
-	origin.x = pixel_width / 2;
-	origin.y = pixel_height / 2;
+	axes_vertical_line_width = 1*PIXEL_SCALE;
+	axes_vertical_line_height = render_distance.y;
 
-	render_distance.x = pixel_width*10;
-	render_distance.y = pixel_height*10;
-
-	// Bug... Doesn't fill space with pixel_width
-	horizontal_line_width = render_distance.x;
-	horizontal_line_height = 1*PIXEL_SCALE;
-	vertical_line_width = 1*PIXEL_SCALE;
-	vertical_line_height = render_distance.y;
 	graph_horizontal_line_width = render_distance.x;
 	graph_horizontal_line_height = 1*PIXEL_SCALE;
+
 	graph_vertical_line_height = render_distance.y;
 	graph_vertical_line_width = 1*PIXEL_SCALE;
 
@@ -152,12 +134,12 @@ void initialize(void)
 
 	font_init(renderer);
 
-	create_sprite(&horizontal_line, "../assets/horizontal_line.png",
-					horizontal_line_width, horizontal_line_height, 0, pixel_height/2);
+	create_sprite(&axes_horizontal_line, "../assets/horizontal_line.png",
+					axes_horizontal_line_width, axes_horizontal_line_height, 0, pixel_height/2);
 	create_sprite(&graph_horizontal_line, "../assets/graph_horizontal_line.png",
 					graph_horizontal_line_width, graph_horizontal_line_height, 0, pixel_height/2);
-	create_sprite(&vertical_line, "../assets/vertical_line.png",
-					vertical_line_width, vertical_line_height, pixel_width/2, 0);
+	create_sprite(&axes_vertical_line, "../assets/vertical_line.png",
+					axes_vertical_line_width, axes_vertical_line_height, pixel_width/2, 0);
 	create_sprite(&graph_vertical_line, "../assets/graph_vertical_line.png",
 					graph_vertical_line_width, graph_vertical_line_height, pixel_width/2, 0);
 
@@ -231,8 +213,8 @@ void draw(void)
 			   pixel_height+(origin_offset.y), -render_max, &graph_vertical_line);
 	draw_lines(-pixel_width+(origin_offset.x), 0+coordinate_location.y,
 			   pixel_width+(origin_offset.x), 0+coordinate_location.y, -render_max, &graph_horizontal_line);
-	draw_lines(coordinate_location.x, -pixel_height, coordinate_location.x, pixel_height, 1, &vertical_line);
-	draw_lines(-pixel_width, 0+coordinate_location.y, pixel_width, 0+coordinate_location.y, 1, &horizontal_line);
+	draw_lines(coordinate_location.x, -pixel_height, coordinate_location.x, pixel_height, 1, &axes_vertical_line);
+	draw_lines(-pixel_width, 0+coordinate_location.y, pixel_width, 0+coordinate_location.y, 1, &axes_horizontal_line);
 
 	// using actual dimensions for text
 	SDL_RenderSetLogicalSize(renderer, window_width_raw, window_height_raw);
@@ -244,7 +226,7 @@ void draw(void)
 	draw_numbers(number, starting_line, D_RIGHT);
 
 	number = -1;
-	starting_line = 1;
+	starting_line = -1;
 	draw_numbers(number, starting_line, D_LEFT);
 
 	number = 1;
@@ -308,6 +290,21 @@ void draw_lines(int x, int y, int x1, int y2, int amount, SPRITE* sprite)
 	}
 }
 
+float fconv_raw(float a)
+{
+	a *= ((float)window_width_raw / (pixel_width));
+
+	return a;
+}
+
+int iconv_raw(int a)
+{
+
+	a *= (window_width_raw / (pixel_width));
+
+	return a;
+}
+
 void draw_numbers(int number, int starting_line, enum DIRECTION direction)
 {
 	int font_size = MIN_FONT_SIZE;
@@ -361,12 +358,12 @@ void draw_numbers(int number, int starting_line, enum DIRECTION direction)
 
 		if(direction == D_LEFT)
 		{
-			d_font->rect.x = (origin.x + origin_offset.x + (line-distance)) * ((window_width_raw / (pixel_width))) + (d_font->rect.w);
-			d_font->rect.y = (origin.y + origin_offset.y) * ((window_height_raw / (pixel_height))) + (d_font->rect.h+30);
+			d_font->rect.x = iconv_raw(origin.x + origin_offset.x + (line+distance));
+			d_font->rect.y = iconv_raw(origin.y + origin_offset.y);
 		}else if(direction == D_RIGHT)
 		{
 			d_font->rect.x = (origin.x + origin_offset.x + (line+distance)) * ((window_width_raw / (pixel_width))) + (d_font->rect.w);
-			d_font->rect.y = (origin.y + origin_offset.y) * ((window_height_raw / (pixel_height))) + (d_font->rect.h+30);
+			d_font->rect.y = (origin.y + origin_offset.y) * ((window_height_raw / (pixel_height)));
 		} else if(direction == D_DOWN){
 			d_font->rect.x = (origin.x + origin_offset.x) * (window_width_raw / (pixel_width)) + (d_font->rect.w+60);
 			d_font->rect.y = (origin.y + origin_offset.y + (-line)+distance) * ((window_height_raw / (pixel_height))) + (d_font->rect.h)+20;
@@ -408,7 +405,7 @@ void mouse_event()
 		origin_offset.x += (((first_click_x - x)) / mouse_speed.x);
 		origin_offset.y += (((first_click_y - y)) / mouse_speed.y);
 
-		printf("Moving X by: %d\nMoving Y by: %d\n", origin_offset.x, origin_offset.y);
+		//printf("Moving X by: %d\nMoving Y by: %d\n", origin_offset.x, origin_offset.y);
 	}
 }
 
@@ -473,6 +470,8 @@ char* strincat(char* str1, int num_str, unsigned long length)
 	return finalized_str;
 }
 
+struct FLOAT_VECTOR2 gesture;
+
 void input()
 {
 	quit = false;
@@ -481,97 +480,83 @@ void input()
 	{
 		switch (e.type)
 		{
-		case SDL_QUIT:
-			quit = true;
-			cleanup();
-			break;
-		case SDL_KEYDOWN:
+			case SDL_DOLLARGESTURE:
 
-			break;
-		case SDL_MOUSEBUTTONDOWN:
+				break;
+			case SDL_MULTIGESTURE:
+				gesture.x = e.mgesture.x;
+				gesture.y = e.mgesture.y;
+				float rotationf = e.mgesture.dTheta;
+				float pinched = e.mgesture.dDist;
+				int num_fingers = e.mgesture.numFingers;
 
-			SDL_GetMouseState(&mouse_x, &mouse_y);
-			mouse_moved = true;
-			if ((e.type & SDL_BUTTON_LMASK) != 0)
-			{
-				left_mousedown = true;
-			}
-			if ((buttons & SDL_BUTTON_LMASK) != 0)
-			{
-			}
-			break;
-			case SDL_FINGERDOWN:
-			SDL_GetMouseState(&mouse_x, &mouse_y);
-			mouse_moved = true;
-			left_mousedown = true;
-			break;
-		case SDL_MOUSEBUTTONUP:
-			left_mousedown = false;
-			mouse_moved = false;
-			// if((e.type & SDL_BUTTON_LMASK) != 0)
-			// {
-			first_click_x = 0;
-			first_click_y = 0;
+				printf("Gesture x: %f\nGesture y: %f\n", gesture.x, gesture.y);
+				printf("Rotation: %f\nAmount Pinched: %f\n", rotationf, pinched);
+				printf("Number of fingers: %d\n", num_fingers);
 
-			first_click = false;
-			// }
-			break;
-		case SDL_FINGERUP:
-			left_mousedown = false;
-			mouse_moved = false;
-			first_click_x = 0;
-			first_click_y = 0;
-			first_click = false;
-			break;
-		case SDL_MOUSEWHEEL:
-			if (e.wheel.y > 0)
-			{
-				if (spacing > SPACING_LIMIT)
-					spacing = STARTING_SPACING;
-				else
-					spacing++;
-			}
-			else if (e.wheel.y < 0)
-			{
-				if (spacing <= STARTING_SPACING)
-					spacing = SPACING_LIMIT;
-				else
-					spacing--;
-			}
 
-			break;
+				break;
 
-		case SDL_WINDOWEVENT:
+			case SDL_QUIT:
+				quit = true;
+				cleanup();
+				break;
+			case SDL_KEYDOWN:
 
-			switch (e.window.event)
-			{
-			case SDL_WINDOWEVENT_SIZE_CHANGED:
-				window_width_raw = e.window.data1;
-				window_height_raw = e.window.data2;
-				
-				if(window_width_raw > window_height_raw)
+				break;
+			case SDL_MOUSEBUTTONDOWN:
+
+				SDL_GetMouseState(&mouse_x, &mouse_y);
+				mouse_moved = true;
+				if ((e.type & SDL_BUTTON_LMASK) != 0)
 				{
-					orientation = LANDSCAPE;
-					pixel_width = 16 * PIXEL_SCALE;
-					pixel_height = 9 * PIXEL_SCALE;
-				} else
-				{
-					orientation = PORTRAIT;
-					pixel_width = 9 * PIXEL_SCALE;
-					pixel_height = 16 * PIXEL_SCALE;
+					left_mousedown = true;
 				}
+				if ((buttons & SDL_BUTTON_LMASK) != 0)
+				{
+				}
+				break;
+				case SDL_FINGERDOWN:
+				SDL_GetMouseState(&mouse_x, &mouse_y);
+				mouse_moved = true;
+				left_mousedown = true;
+				break;
+			case SDL_MOUSEBUTTONUP:
+				left_mousedown = false;
+				mouse_moved = false;
+				// if((e.type & SDL_BUTTON_LMASK) != 0)
+				// {
+				first_click_x = 0;
+				first_click_y = 0;
 
-				origin.x = pixel_width / 2;
-				origin.y = pixel_height / 2;
-
-				render_distance.x = pixel_width*10;
-				render_distance.y = pixel_height*10;
+				first_click = false;
+				// }
+				break;
+			case SDL_FINGERUP:
+				left_mousedown = false;
+				mouse_moved = false;
+				first_click_x = 0;
+				first_click_y = 0;
+				first_click = false;
+				break;
+			case SDL_MOUSEWHEEL:
+				if (e.wheel.y > 0)
+				{
+					if (spacing > SPACING_LIMIT)
+						spacing = STARTING_SPACING;
+					else
+						spacing++;
+				}
+				else if (e.wheel.y < 0)
+				{
+					if (spacing <= STARTING_SPACING)
+						spacing = SPACING_LIMIT;
+					else
+						spacing--;
+				}
 
 				break;
 			}
-			break;
-
-		}
 	}
 
 	mouse_event();
@@ -605,8 +590,8 @@ void cleanup(void)
 {
 	SDL_DestroyWindow(window);
 	SDL_DestroyRenderer(renderer);
-	SDL_DestroyTexture(vertical_line.texture);
-	SDL_DestroyTexture(horizontal_line.texture);
+	SDL_DestroyTexture(axes_vertical_line.texture);
+	SDL_DestroyTexture(axes_horizontal_line.texture);
 	SDL_DestroyTexture(graph_vertical_line.texture);
 	SDL_DestroyTexture(graph_horizontal_line.texture);
 	font_cleanup();
