@@ -4,6 +4,7 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_events.h>
 #include <SDL2/SDL_mouse.h>
+#include <SDL2/SDL_rect.h>
 #include <SDL2/SDL_render.h>
 #include <SDL2/SDL_stdinc.h>
 #include <SDL2/SDL_timer.h>
@@ -27,8 +28,8 @@
 #define WINDOW_POSY SDL_WINDOWPOS_UNDEFINED
 
 // dimensions 16:9
-const static int pixel_width = 16*4;
-const static int pixel_height = 9*4;
+static int pixel_width;
+static int pixel_height;
 #define PIXEL_SCALE 1
 
 static int axes_horizontal_line_width, axes_horizontal_line_height;
@@ -54,19 +55,22 @@ struct INT_VECTOR2
 	int y;
 };
 
-const static struct INT_VECTOR2 origin = { pixel_width/2, pixel_height/2};
+static struct INT_VECTOR2 origin;
 // Variables for keeping track of how far away we're from the origin
 // Used for drawing graph
 static struct INT_VECTOR2 origin_offset = { 0, 0 };
-static struct FLOAT_VECTOR2 mouse_speed = { 200, 200 };
+// Lower means faster
+static struct FLOAT_VECTOR2 mouse_speed = { 60, 60 };
 static struct INT_VECTOR2 coordinate_location = { 0, 0 };
-const static struct INT_VECTOR2 render_distance = {pixel_width, pixel_height};
+static struct INT_VECTOR2 render_distance;
+
+const static struct INT_VECTOR2 ASPECT_RATIO = { 16, 9};
 
 // Amount of space away from y and x axis
 // Used for drawing lines in the quadrant
-#define STARTING_SPACING 2.0
-static int spacing = STARTING_SPACING;
-#define SPACING_LIMIT 8.0
+int spacing;
+int starting_spacing;
+int spacing_limit;
 
 static float fps;
 static const float FPS_TARGET = 60.0f;
@@ -86,7 +90,7 @@ static char str_num_buffer[MAX_STR_BUFFER];
 
 static bool quit = false;
 
-struct INT_VECTOR2 world_units = {16,9};
+//struct INT_VECTOR2 world_units = {16,9};
 
 static void initialize(void);
 static void input(void);
@@ -103,6 +107,8 @@ static bool is_on_screen(SDL_Rect rect);
 static void draw_mouse_coordinates(int x, int y);
 static char* strincat(char* str1, int num_str, unsigned long length);
 
+static enum ORIENTATION {LANDSCAPE, PORTRAIT} orientation;
+
 void initialize(void)
 {
 
@@ -111,24 +117,56 @@ void initialize(void)
 	SDL_Init(SDL_INIT_VIDEO);
 
 	window = SDL_CreateWindow(WINDOW_TITLE, WINDOW_POSX, WINDOW_POSY, 1920,
-							  1080, SDL_WINDOW_ALLOW_HIGHDPI);
+							  1080, SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_RESIZABLE);
 
-	SDL_SetWindowResizable(window, false);
+	SDL_SetWindowResizable(window, true);
 	renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 
 	SDL_GetWindowSize(window, &window_width_raw, &window_height_raw);
 
-	axes_horizontal_line_width = render_distance.x;
-	axes_horizontal_line_height = 1*PIXEL_SCALE;
+	if(window_width_raw > window_height_raw)
+	{
+		orientation = LANDSCAPE;
+	}
+	else if(window_height_raw > window_width_raw)
+	{
+		orientation = PORTRAIT;
+	}
 
-	axes_vertical_line_width = 1*PIXEL_SCALE;
+	switch(orientation)
+	{
+		case LANDSCAPE:
+			pixel_width = window_width_raw/ASPECT_RATIO.x;
+			pixel_height = window_height_raw/ASPECT_RATIO.y;
+
+			break;
+		case PORTRAIT:
+			pixel_width = window_width_raw/ASPECT_RATIO.x;
+			pixel_height = window_height_raw/ASPECT_RATIO.y;
+
+			break;
+	}
+	starting_spacing = 1 * pixel_width;
+	spacing = starting_spacing;
+	spacing_limit = 3 * pixel_width;
+
+
+	origin.x = window_width_raw/2;
+	origin.y = window_height_raw/2;
+	render_distance.x = window_width_raw;
+	render_distance.y = window_height_raw;
+
+	axes_horizontal_line_width = render_distance.x;
+	axes_horizontal_line_height = 1*pixel_height;
+
+	axes_vertical_line_width = 1*pixel_width;
 	axes_vertical_line_height = render_distance.y;
 
 	graph_horizontal_line_width = render_distance.x;
-	graph_horizontal_line_height = 1*PIXEL_SCALE;
+	graph_horizontal_line_height = 1*pixel_height;
 
 	graph_vertical_line_height = render_distance.y;
-	graph_vertical_line_width = 1*PIXEL_SCALE;
+	graph_vertical_line_width = 1*pixel_width;
 
 	int buffering;
 	SDL_GL_GetAttribute(SDL_GL_DOUBLEBUFFER, &buffering);
@@ -193,7 +231,7 @@ void draw(void)
 
 	// axes in imaginary size so it's scaled up or down depending on actual
 	// dimensions
-	SDL_RenderSetLogicalSize(renderer, pixel_width, pixel_height);
+	//SDL_RenderSetLogicalSize(renderer, pixel_width, pixel_height);
 
 	coordinate_location.x = origin_offset.x + origin.x;
 	coordinate_location.y = origin_offset.y + origin.y;
@@ -217,15 +255,8 @@ void draw(void)
 	draw_lines(coordinate_location.x, -pixel_height, coordinate_location.x, pixel_height, 1, &axes_vertical_line);
 	draw_lines(-pixel_width, 0+coordinate_location.y, pixel_width, 0+coordinate_location.y, 1, &axes_horizontal_line);
 
-	// using actual dimensions for text
-	SDL_RenderSetLogicalSize(renderer, window_width_raw, window_height_raw);
-	draw_coordinates();
-	draw_mouse_coordinates(mouse_x, mouse_y);
 
-	int number = 1;
-	int starting_line = 1;
-	draw_numbers(number, starting_line, D_RIGHT);
-
+/*
 	number = -1;
 	starting_line = -1;
 	draw_numbers(number, starting_line, D_LEFT);
@@ -237,7 +268,16 @@ void draw(void)
 	number = -1;
 	starting_line = 0;
 	draw_numbers(number, starting_line, D_DOWN);
+*/
+	// using actual dimensions for text
+	//SDL_RenderSetLogicalSize(renderer, window_width_raw, window_height_raw);
+	draw_coordinates();
+	draw_mouse_coordinates(mouse_x, mouse_y);
 
+
+	int number = 1;
+	int starting_line = 1;
+	//draw_numbers(number, starting_line, D_RIGHT);
 }
 
 /*
@@ -311,6 +351,29 @@ void draw_numbers(int number, int starting_line, enum DIRECTION direction)
 	int font_size = MIN_FONT_SIZE;
 	int line = starting_line;
 
+	for(int i = MIN_FONT_SIZE; i < MAX_FONT_SIZE; i++)
+	{
+		SPRITE *d_font = load_number(0, i);
+
+		if((d_font->rect.w*2) == spacing)
+		{
+			//printf("Similar size!!!%d", spacing);
+			font_size = i;
+		}
+	}
+
+
+	for(int i=0, distance = 0; i < MAX_FONT_NUMBERS; i++, distance+=spacing)
+	{
+		SPRITE *d_font = load_number(i, font_size);
+
+		d_font->rect.x = iconv_raw(origin.x + origin_offset.x+distance);
+		d_font->rect.y = iconv_raw(origin.y + origin_offset.y);
+
+		SDL_RenderCopy(renderer, d_font->texture, NULL,
+					   &(d_font->rect));
+	}
+/*
 	switch(spacing)
 	{
 		case 2:
@@ -359,8 +422,8 @@ void draw_numbers(int number, int starting_line, enum DIRECTION direction)
 
 		if(direction == D_LEFT)
 		{
-			d_font->rect.x = iconv_raw(origin.x + origin_offset.x + (line-distance));
-			d_font->rect.y = iconv_raw(origin.y + origin_offset.y + axes_horizontal_line_height);
+			d_font->rect.x = origin.x + origin_offset.x;
+			d_font->rect.y = origin.y + origin_offset.y;
 		}else if(direction == D_RIGHT)
 		{
 			d_font->rect.x = iconv_raw(origin.x + origin_offset.x + (line+distance));
@@ -382,6 +445,7 @@ void draw_numbers(int number, int starting_line, enum DIRECTION direction)
 
 	SDL_RenderCopy(renderer, d_font->texture, NULL,
 				   &(d_font->rect));
+*/
 }
 
 bool mouse_moved = false;
@@ -549,20 +613,53 @@ void input()
 			case SDL_MOUSEWHEEL:
 				if (e.wheel.y > 0)
 				{
-					if (spacing > SPACING_LIMIT)
-						spacing = STARTING_SPACING;
+					if (spacing > spacing_limit)
+						spacing = starting_spacing;
 					else
-						spacing++;
+						spacing+=3;
 				}
 				else if (e.wheel.y < 0)
 				{
-					if (spacing <= STARTING_SPACING)
-						spacing = SPACING_LIMIT;
+					if (spacing <= starting_spacing)
+						spacing = spacing_limit;
 					else
-						spacing--;
+						spacing-=3;
 				}
+	case SDL_WINDOWEVENT:
 
-				break;
+				switch (e.window.event)
+				{
+				case SDL_WINDOWEVENT_SIZE_CHANGED:
+					/*
+					** Change line coordinates to new window size
+					*/
+					// printf("First time called\n");
+					// sleep(5);
+					window_width_raw = e.window.data1;
+					window_height_raw = e.window.data2;
+
+					printf("Height: %d\nWidth: %d\n", e.window.data2, e.window.data1);
+
+					if(window_width_raw > window_height_raw)
+					{
+						orientation = LANDSCAPE;
+					}
+					else if(window_height_raw > window_width_raw)
+					{
+						orientation = PORTRAIT;
+					}
+
+					pixel_width = window_width_raw/ASPECT_RATIO.x;
+					pixel_height = window_height_raw/ASPECT_RATIO.y;
+
+
+					origin.x = window_width_raw/2;
+					origin.y = window_height_raw/2;
+					render_distance.x = window_width_raw;
+					render_distance.y = window_height_raw;
+
+					break;
+				}
 			}
 	}
 
