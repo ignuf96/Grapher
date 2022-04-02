@@ -14,8 +14,10 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <SDL2/SDL_image.h>
-#include <limits.h>				/* MAX VALUE FOR GRAPH LONG_MAX */
-#include <unistd.h>				// For sleep();
+/* MAX VALUE FOR GRAPH LONG_MAX */
+#include <limits.h>
+// For sleep();
+#include <unistd.h>
 #include <SDL2/SDL_platform.h>
 #include "../include/platform.h"
 
@@ -109,6 +111,8 @@ static char* strincat(char* str1, int num_str, unsigned long length);
 
 static enum ORIENTATION {LANDSCAPE, PORTRAIT} orientation;
 
+SPRITE graph_rect;
+
 void initialize(void)
 {
 
@@ -119,7 +123,6 @@ void initialize(void)
 	window = SDL_CreateWindow(WINDOW_TITLE, WINDOW_POSX, WINDOW_POSY, 1920,
 							  1080, SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_RESIZABLE);
 
-	SDL_SetWindowResizable(window, true);
 	renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 
 	SDL_GetWindowSize(window, &window_width_raw, &window_height_raw);
@@ -182,6 +185,8 @@ void initialize(void)
 	create_sprite(&graph_vertical_line, "../assets/graph_vertical_line.png",
 					graph_vertical_line_width, graph_vertical_line_height, pixel_width/2, 0);
 
+	create_sprite(&graph_rect, "../assets/rect.png", 1*pixel_width, 1*pixel_height, 0, 0);
+
 	conv_fvec(&mouse_speed.x, &mouse_speed.y);
 }
 
@@ -224,60 +229,41 @@ int main(void)
 	return 0;
 }
 
+#define MAX_DRAW_RECT 1
+
+void draw_rect(SPRITE sprite)
+{
+
+	SDL_Rect rect_pos = sprite.rect;
+		rect_pos.w += spacing;
+		rect_pos.h += spacing;
+		for(int y=-MAX_DRAW_RECT, distancey=pixel_height; y < MAX_DRAW_RECT; y++, distancey+=pixel_height)
+{
+		rect_pos.y = y+distancey;
+
+		for(int x=-MAX_DRAW_RECT, distancex=pixel_width; x < MAX_DRAW_RECT; x++, distancex+=pixel_width)
+		{
+			rect_pos.x = x+distancex;
+			SDL_RenderCopy(renderer, sprite.texture, NULL, &rect_pos);
+		}
+	}
+}
+
 void draw(void)
 {
 	SDL_SetRenderDrawColor(renderer, 16, 37, 73, 255);
 	SDL_RenderClear(renderer);
-
-	// axes in imaginary size so it's scaled up or down depending on actual
-	// dimensions
-	//SDL_RenderSetLogicalSize(renderer, pixel_width, pixel_height);
 
 	coordinate_location.x = origin_offset.x + origin.x;
 	coordinate_location.y = origin_offset.y + origin.y;
 	//draw_axes();
 	int render_max = 300;
 	int lines_to_draw = INT_MAX-1;
-	// setting coordinate_location.x or coordinate_location.y makes the lines move as the mouse moves
-	// Right now, the lines are limited by pixel_width or pixel_height.
-	// We want to draw the minimum as to not impact performance. This will have the consequence that we will have to make an illusion
-	// so it appears there's an infinite graph
-	draw_lines(coordinate_location.x, -pixel_height,
-			   coordinate_location.x, pixel_height, render_max, &graph_vertical_line);
-	draw_lines(-pixel_width+(origin_offset.x), 0+coordinate_location.y, pixel_width+(origin_offset.x),
-			   0+coordinate_location.y, render_max, &graph_horizontal_line);
-
-
-	draw_lines(coordinate_location.x, -pixel_height+(origin_offset.y), coordinate_location.x,
-			   pixel_height+(origin_offset.y), -render_max, &graph_vertical_line);
-	draw_lines(-pixel_width+(origin_offset.x), 0+coordinate_location.y,
-			   pixel_width+(origin_offset.x), 0+coordinate_location.y, -render_max, &graph_horizontal_line);
-	draw_lines(coordinate_location.x, -pixel_height, coordinate_location.x, pixel_height, 1, &axes_vertical_line);
-	draw_lines(-pixel_width, 0+coordinate_location.y, pixel_width, 0+coordinate_location.y, 1, &axes_horizontal_line);
-
-
-/*
-	number = -1;
-	starting_line = -1;
-	draw_numbers(number, starting_line, D_LEFT);
-
-	number = 1;
-	starting_line = 1;
-	draw_numbers(number, starting_line, D_UP);
-
-	number = -1;
-	starting_line = 0;
-	draw_numbers(number, starting_line, D_DOWN);
-*/
-	// using actual dimensions for text
-	//SDL_RenderSetLogicalSize(renderer, window_width_raw, window_height_raw);
-	draw_coordinates();
-	draw_mouse_coordinates(mouse_x, mouse_y);
-
 
 	int number = 1;
 	int starting_line = 1;
-	//draw_numbers(number, starting_line, D_RIGHT);
+	draw_numbers(number, starting_line, D_RIGHT);
+	draw_rect(graph_rect);
 }
 
 /*
@@ -292,44 +278,6 @@ bool is_on_screen(SDL_Rect rect)
 	return is_in_view;
 }
 */
-
-void draw_lines(int x, int y, int x1, int y2, int amount, SPRITE* sprite)
-{
-// This function will either draw one or more lines
-// If x and x1 are the same value & amount > 1 then we assume only y is increasing and vice versa
-// If amount is negative we get the inverse and draw the opposite way
-
-	int draw_location;
-	if(x == x1)
-		draw_location = x;
-	else if(y == y2)
-		draw_location = y;
-
-	int line_distance;
-
-	if(amount >= 0)
-		line_distance = spacing;
-	else if(amount < 0)
-	{
-		line_distance = -spacing;
-		amount = -amount;
-	}
-
-	for (int count = 1, axis = draw_location; count <= amount;
-		axis += (line_distance), count++)
-	{
-		if(x == x1)
-			sprite->rect.x = axis;
-		else if(y == y2){
-			sprite->rect.y = axis;
-		}
-//		if(is_on_screen(sprite->rect))
-	//	{
-			SDL_RenderCopy(renderer, sprite->texture, NULL,
-						   &(sprite->rect));
-		//}
-	}
-}
 
 float fconv_raw(float a)
 {
@@ -353,7 +301,7 @@ void draw_numbers(int number, int starting_line, enum DIRECTION direction)
 
 	for(int i = MIN_FONT_SIZE; i < MAX_FONT_SIZE; i++)
 	{
-		SPRITE *d_font = load_number(0, i);
+		SPRITE *d_font = load_texture(1, i);
 
 		if((d_font->rect.w*2) == spacing)
 		{
@@ -362,90 +310,32 @@ void draw_numbers(int number, int starting_line, enum DIRECTION direction)
 		}
 	}
 
+	SPRITE *d_font = load_texture(1, font_size);
+	int part_size = d_font->rect.w / 10;
 
-	for(int i=0, distance = 0; i < MAX_FONT_NUMBERS; i++, distance+=spacing)
-	{
-		SPRITE *d_font = load_number(i, font_size);
-
-		d_font->rect.x = iconv_raw(origin.x + origin_offset.x+distance);
-		d_font->rect.y = iconv_raw(origin.y + origin_offset.y);
-
-		SDL_RenderCopy(renderer, d_font->texture, NULL,
-					   &(d_font->rect));
-	}
-/*
-	switch(spacing)
-	{
-		case 2:
-			font_size = MIN_FONT_SIZE;
-			break;
-		case 3:
-			font_size = MIN_FONT_SIZE+1;
-			break;
-		case 4:
-			font_size = MIN_FONT_SIZE+2;
-			break;
-		case 5:
-			font_size = MIN_FONT_SIZE+3;
-			break;
-		case 6:
-			font_size = MIN_FONT_SIZE+4;
-			break;
-		case 7:
-			font_size = MIN_FONT_SIZE+5;
-			break;
-		case 8:
-			font_size = MIN_FONT_SIZE+6;
-			break;
-		default:
-			font_size = MIN_FONT_SIZE;
-	}
-
-	enum NUMBER_SIGN{NEGATIVE, POSITIVE}number_sign;
-	if(number < 0)
-	{
-		number_sign = NEGATIVE;
-		number = -(number);
-	}
-	else
-	{
-		number_sign = POSITIVE;
-	}
-
-	int distance = spacing;
-	for (; number < MAX_FONT_NUMBERS; number++, line += ((direction==D_UP || direction==D_RIGHT) ? distance : -distance))
+	int divisor = 1000;
 	{
 
-		int num = number_sign ? number : -number;
-		SPRITE *d_font = load_number(num, font_size);
-
-
-		if(direction == D_LEFT)
+		for(int i=1; i < 300; i++)
 		{
-			d_font->rect.x = origin.x + origin_offset.x;
-			d_font->rect.y = origin.y + origin_offset.y;
-		}else if(direction == D_RIGHT)
-		{
-			d_font->rect.x = iconv_raw(origin.x + origin_offset.x + (line+distance));
-			d_font->rect.y = (origin.y + origin_offset.y+axes_horizontal_line_height) * ((window_height_raw / (pixel_height)));
-		} else if(direction == D_DOWN){
-			d_font->rect.x = (origin.x + origin_offset.x + axes_vertical_line_width) * (window_width_raw / (pixel_width));
-			d_font->rect.y = iconv_raw(origin.y + origin_offset.y - (line-distance))+graph_vertical_line_height;
-		} else if(direction == D_UP)
-		{
-			d_font->rect.x = (origin.x + origin_offset.x + axes_vertical_line_width) * (window_width_raw / (pixel_width));
-			d_font->rect.y = iconv_raw(origin.y + origin_offset.y - (line+distance));
+			int place = 0;
+			int distance = 0;
+			int j=i;
+		do {
+			SDL_Rect rect_place = d_font->rect;
+			d_font->rect.x = (origin.x + origin_offset.x + distance);
+			d_font->rect.y = (origin.y + origin_offset.y);
+			rect_place.x += place;
+			SDL_RenderCopy(renderer, d_font->texture, NULL, &rect_place);
+
+			j/=10;
+			place+=part_size;
+			distance+=spacing;
+
+			} while((j / 10) != 0);
 		}
-		SDL_RenderCopy(renderer, d_font->texture, NULL,
-					&(d_font->rect));
 	}
-	SPRITE *d_font = load_number(0, font_size);
-	d_font->rect.x = iconv_raw(origin.x + origin_offset.x);
-	d_font->rect.y = iconv_raw(origin.y + origin_offset.y);
 
-	SDL_RenderCopy(renderer, d_font->texture, NULL,
-				   &(d_font->rect));
-*/
 }
 
 bool mouse_moved = false;
@@ -459,10 +349,12 @@ bool left_mousedown = false;
 
 void mouse_event()
 {
-	int x, y;
+	int x, y, raw_x, raw_y;
 	if (left_mousedown)
 	{
-		SDL_GetMouseState(&x, &y);
+		SDL_GetMouseState(&raw_x, &raw_y);
+		x = raw_x;
+		y = raw_y;
 		conv_ivec(&x, &y);
 
 		if (first_click == false)
@@ -470,6 +362,16 @@ void mouse_event()
 			first_click = true;
 			first_click_x = x;
 			first_click_y = y;
+
+			printf("Clicked at\nx: %d\ny: %d\n", ((((raw_x-origin.x+origin_offset.x))/pixel_width)),
+			   -(((raw_y)/pixel_height)-((origin_offset.y+origin.y+axes_horizontal_line_height)/pixel_height)));
+
+		//	int temp_x = origin.x+origin_offset.x;
+			//int temp_y = origin.y+origin_offset.y;
+			//conv_ivec(&temp_x, &temp_y);
+			//printf("Clicked at\nx: %d\ny: %d\n", (x)-temp_x,
+				//   ((-y)-(((origin.y+origin_offset.y))/pixel_height)));
+
 		}
 		// We get the difference between the coordinates from when
 		// the user first clicks the mouse and while they are moving the mouse
@@ -479,68 +381,6 @@ void mouse_event()
 		//printf("Moving X by: %d\nMoving Y by: %d\n", origin_offset.x, origin_offset.y);
 	}
 }
-
-
-void draw_mouse_coordinates(int x, int y)
-{
-	SDL_Texture *texture_x = NULL;
-	SPRITE temp_font_x;
-	char *finalized_str_x = strincat("Mouse X: ", ((mouse_x/pixel_width)+(origin.x/pixel_width)), MAX_STR_BUFFER-1);
-
-	load_string_font(renderer, &temp_font_x, texture_x, finalized_str_x);
-	temp_font_x.rect.y = 175;
-	SDL_RenderCopy(renderer, temp_font_x.texture, NULL, &temp_font_x.rect);
-	SDL_DestroyTexture(temp_font_x.texture);
-
-	SDL_Texture *texture_y = NULL;
-	SPRITE temp_font_y;
-	char *finalized_str_y = strincat("MOUSE Y: ", (mouse_y/pixel_height), MAX_STR_BUFFER-1);
-
-	load_string_font(renderer, &temp_font_y, texture_y, finalized_str_y);
-	temp_font_y.rect.y = 225;
-	SDL_RenderCopy(renderer, temp_font_y.texture, NULL, &temp_font_y.rect);
-
-	SDL_DestroyTexture(temp_font_y.texture);
-}
-
-void draw_coordinates(void)
-{
-	// Draw X Coordinate
-	SDL_Texture *texture_x = NULL;
-	SPRITE temp_font_x;
-	char *finalized_str_x = strincat("Coordinate X: ", (int)-origin_offset.x, MAX_STR_BUFFER-1);
-
-	load_string_font(renderer, &temp_font_x, texture_x, finalized_str_x);
-	SDL_RenderCopy(renderer, temp_font_x.texture, NULL, &temp_font_x.rect);
-	SDL_DestroyTexture(temp_font_x.texture);
-
-	// Draw Y Coordinate
-	SDL_Texture *texture_y = NULL;
-	SPRITE temp_font_y;
-	char *finalized_str_y = strincat("Coordinate Y: ", (int)origin_offset.y, MAX_STR_BUFFER-1);
-
-	load_string_font(renderer, &temp_font_y, texture_y, finalized_str_y);
-	temp_font_y.rect.y = 75;
-	SDL_RenderCopy(renderer, temp_font_y.texture, NULL, &temp_font_y.rect);
-
-	SDL_DestroyTexture(temp_font_y.texture);
-}
-
-// combine a string and a number into one string
-char* strincat(char* str1, int num_str, unsigned long length)
-{
-
-	memset(&str_buffer, '\0', MAX_STR_BUFFER-1);
-	memset(&str_num_buffer, '\0', MAX_STR_BUFFER-1);
-
-	strncpy(str_buffer, str1, MAX_STR_BUFFER-1);
-	snprintf(str_num_buffer, MAX_STR_BUFFER-1, "%d", num_str);
-
-	char *finalized_str = strncat(str_buffer, str_num_buffer, MAX_STR_BUFFER-1);
-
-	return finalized_str;
-}
-
 struct FLOAT_VECTOR2 gesture;
 
 void input()
@@ -564,7 +404,6 @@ void input()
 				printf("Gesture x: %f\nGesture y: %f\n", gesture.x, gesture.y);
 				printf("Rotation: %f\nAmount Pinched: %f\n", rotationf, pinched);
 				printf("Number of fingers: %d\n", num_fingers);
-
 
 				break;
 

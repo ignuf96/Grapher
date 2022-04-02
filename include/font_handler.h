@@ -5,8 +5,8 @@
 #include <stdio.h>
 
 #define MAX_FONT_NUMBERS 300
-#define MIN_FONT_SIZE 10
-#define MAX_FONT_SIZE 30
+#define MIN_FONT_SIZE 20
+#define MAX_FONT_SIZE 150
 #define FONT_SIZE_RANGE MAX_FONT_SIZE - MIN_FONT_SIZE
 
 typedef struct SPRITE {
@@ -22,7 +22,7 @@ struct INT_VECTOR4 {
     int y;
 };
 
-SPRITE* load_number(int number, int font_size);
+SPRITE* load_texture(int number, int font_size);
 void load_string_font(SDL_Renderer* renderer, SPRITE* sprite, SDL_Texture* texture, char* str);
 void font_init(SDL_Renderer* renderer);
 void font_cleanup(void);
