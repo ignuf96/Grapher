@@ -100,7 +100,7 @@ void font_cleanup(void)
     {
         //Causes seg fault
         //TTF_CloseFont(coordinate_font);
-        for(int i=MIN_FONT_SIZE; i < MAX_FONT_NUMBERS; i++)
+        for(int i=MIN_FONT_SIZE; i < MAX_FONT_SIZE; i++)
         {
             SDL_DestroyTexture(p_font[i].texture);
             SDL_DestroyTexture(n_font[i].texture);
