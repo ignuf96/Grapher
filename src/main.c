@@ -47,6 +47,7 @@ typedef struct FLOAT_VECTOR2
 {
 	float x;
 	float y;
+
 }fvec2;
 
 typedef struct INT_VECTOR2
@@ -101,6 +102,7 @@ static ivec2 conv_raw(int a, int b);
 static void create_sprite(SPRITE* sprite, char* path, int width, int height, int x, int y);
 static bool is_on_screen(SDL_Rect rect);
 static void draw_mouse_coordinates(int x, int y);
+static int get_number(int num, int part_size);
 
 SPRITE graph_box;
 
@@ -189,7 +191,7 @@ void initialize(void)
 				distance_x = pixel_width;
 				distance_y = pixel_height;
 				break;
-		}
+	}
 		for(int i=0, y = quadrant_y; i < GRAPH_HEIGHT; i++, y+=distance_y)
 		{
 			for(int j =0, x = quadrant_x; j < GRAPH_WIDTH; j++, x+=distance_x)
@@ -202,10 +204,12 @@ void initialize(void)
 			}
 		}
 	}
+
 }
 
 int main(void)
 {
+	//printf("Get number: %d\n", get_number(10, 0));
 	initialize();
 	// ADAPTIVE SYNC (-1) IMMEDIATE(0)
 	SDL_GL_SetSwapInterval(1);
@@ -346,32 +350,85 @@ void draw_numbers(int number, int starting_line, enum DIRECTION direction)
 		}
 	}
 
-	SPRITE *d_font = load_texture(1, font_size);
+	SPRITE *d_font = load_texture(10, font_size);
 	int part_size = d_font->rect.w / 10;
 
-	int divisor = 1000;
-	{
 
-		for(int i=1; i < 300; i++)
-		{
-			int place = 0;
-			int distance = 0;
-			int j=i;
+	d_font->rect.x = (origin.x + origin_offset.x);
+	d_font->rect.y = (origin.y + origin_offset.y);
+
+
+	SDL_Rect rect_place;
+	// This selects a part from the texture
+	// as always, we start counting at 0 - (part_size * number) gives us that number part
+	rect_place.x = part_size*0;
+	rect_place.y = 0;
+	rect_place.w = part_size;
+	rect_place.h = d_font->rect.h;
+
+	// This is the actually coordinate location to be drawn at
+	SDL_Rect dest;
+	dest.x = (origin.x + origin_offset.x);
+	dest.y = (origin.y + origin_offset.y);
+	dest.w = part_size;
+	dest.h = d_font->rect.h;
+
+	//SDL_RenderCopy(renderer, d_font->texture, &rect_place, &dest);
+
+
+	int divisor = 1000;
+	//int distance = 0;
+
+	for(int i=1; i < 100; i++)
+	{
+		dest.x += part_size*2;
+		int distance_left = get_number(i, 0);
+		int distance = 0;
+		int place = 0;
+		int j=i;
+
+		switch (distance_left) {
+			case 1:
+				divisor = 10;
+				break;
+			case 2:
+				divisor = 10;
+				break;
+			case 3:
+				divisor = 100;
+				break;
+		}
+
 		do {
-			SDL_Rect rect_place = d_font->rect;
-			d_font->rect.x = (origin.x + origin_offset.x + distance);
-			d_font->rect.y = (origin.y + origin_offset.y);
-			rect_place.x += place;
-			SDL_RenderCopy(renderer, d_font->texture, NULL, &rect_place);
+			//printf("I: %d\nDistance: %d\n", i, distance);
+
+			//dest.y = (origin.y + origin_offset.y);
+			place = j % divisor;
+			rect_place.x = part_size * place;
+			dest.x += (distance_left*part_size);
+			//printf("J: %d\nPlace: %d\nRect_place.x: %d\nDest.x: %d\n", j, place, rect_place.x, dest.x);
+			SDL_RenderCopy(renderer, d_font->texture, &rect_place, &dest);
 
 			j/=10;
-			place+=part_size;
-			distance+=spacing;
+			//place+=(part_size);
+			distance_left--;
+			distance++;
+			//printf("Subtracting distance\n");
+			j =  (j / divisor) ? 1 : j / divisor;
 
-			} while((j / 10) != 0);
-		}
+		} while(distance_left > 0);
+
 	}
 
+}
+
+int get_number(int num, int part_size)
+{
+	if(!num) return part_size;
+	else {
+		part_size += 1;
+		return get_number(num/=10, part_size);
+	}
 }
 
 bool mouse_moved = false;
