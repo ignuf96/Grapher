@@ -22,50 +22,27 @@
 #include <SDL2/SDL_platform.h>
 // Font things
 #include "../include/font_handler.h"
-//
+#include "../include/datatypes.h"
+#include "../include/world.h"
+
 // Window information for initialization
 #define WINDOW_TITLE "Grapher"
 #define WINDOW_POSX SDL_WINDOWPOS_UNDEFINED
 #define WINDOW_POSY SDL_WINDOWPOS_UNDEFINED
 
 // dimensions 16:9
-static int pixel_width;
-static int pixel_height;
-#define PIXEL_SCALE 1
-
 static int axes_horizontal_line_width, axes_horizontal_line_height;
 static int axes_vertical_line_width, axes_vertical_line_height;
 static SDL_Window *window;
 static SDL_Renderer *renderer;
 static SDL_Event e;
 
-static int window_width_raw;
-static int window_height_raw;
-
-typedef struct FLOAT_VECTOR2
-{
-	float x;
-	float y;
-
-}fvec2;
-
-typedef struct INT_VECTOR2
-{
-	int x;
-	int y;
-}ivec2;
-
-static ivec2 origin;
 // Variables for keeping track of how far away we're from the origin
 // Used for drawing graph
 static ivec2 origin_offset = { 0, 0 };
 // Lower means faster
 static ivec2 mouse_speed = { 30, 30 };
 static ivec2 coordinate_location = { 0, 0 };
-static ivec2 render_distance;
-
-const static struct INT_VECTOR2 ASPECT_RATIO = { 16, 9};
-
 // Amount of space away from y and x axis
 // Used for drawing lines in the quadrant
 float spacing;
@@ -83,7 +60,7 @@ static enum DIRECTION{D_UP, D_DOWN, D_LEFT, D_RIGHT, D_NONE}direction=D_NONE;
 static int mouse_x, mouse_y;
 
 #define MAX_STR_BUFFER 100
-static char str_buffer[MAX_STR_BUFFER-1];
+static char str_buffer[100 - 1];
 static char str_num_buffer[MAX_STR_BUFFER];
 
 static bool quit = false;
@@ -128,25 +105,18 @@ void initialize(void)
 
 	renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 
-	SDL_GetWindowSize(window, &window_width_raw, &window_height_raw);
+	init_world(window);
 
-	pixel_width = window_width_raw/ASPECT_RATIO.x;
-	pixel_height = window_height_raw/ASPECT_RATIO.y;
 	starting_spacing = .1f;
 	spacing = starting_spacing;
 	spacing_limit = 10;
 
-	origin.x = window_width_raw/2;
-	origin.y = window_height_raw/2;
-	render_distance.x = window_width_raw;
-	render_distance.y = window_height_raw;
-
 	// starting x is -render_distance * 3 fills screen left, middle, and right
-	axes_horizontal_line_width = render_distance.x * 3;
-	axes_horizontal_line_height = 1*pixel_height;
+	axes_horizontal_line_width = get_render_distance().x * 3;
+	axes_horizontal_line_height = 1*get_world().y;
 
-	axes_vertical_line_width = 1*pixel_width;
-	axes_vertical_line_height = render_distance.y * 3;
+	axes_vertical_line_width = 1*get_world().x;
+	axes_vertical_line_height = get_render_distance().y * 3;
 
 	int buffering;
 	SDL_GL_GetAttribute(SDL_GL_DOUBLEBUFFER, &buffering);
@@ -196,12 +166,12 @@ int main(void)
 
 void update(void)
 {
-	coordinate_location.x = origin_offset.x + origin.x;
-	coordinate_location.y = origin_offset.y + origin.y;
+	coordinate_location.x = origin_offset.x + get_origin().x;
+	coordinate_location.y = origin_offset.y + get_origin().y;
 
 	for(int n=0; n < NUMBER_OF_QUADRANTS; n++)
 	{
-		ivec2 quadrant = {origin.x, origin.y};
+		ivec2 quadrant = {get_origin().x, get_origin().y};
 		ivec2 distance = {0, 0};
 
 		get_quadrant_pos(n, &quadrant, &distance);
@@ -225,8 +195,8 @@ bool is_on_screen(SDL_Rect* rect)
 	bool intersected = false;
 
 	SDL_Rect window_rect;
-	window_rect.w = window_width_raw;
-	window_rect.h = window_height_raw;
+	window_rect.w = get_screen().x;
+	window_rect.h = get_screen().y;
 	window_rect.x = 0 + origin_offset.x;
 	window_rect.y = 0 + origin_offset.y;
 
@@ -293,8 +263,8 @@ void draw_numbers(int number, int starting_line, enum DIRECTION direction)
 	int part_size = d_font->rect.w / 10;
 
 
-	d_font->rect.x = (origin.x + origin_offset.x);
-	d_font->rect.y = (origin.y + origin_offset.y);
+	d_font->rect.x = (get_origin().x + origin_offset.x);
+	d_font->rect.y = (get_origin().y + origin_offset.y);
 
 
 	SDL_Rect rect_place;
@@ -307,8 +277,8 @@ void draw_numbers(int number, int starting_line, enum DIRECTION direction)
 
 	// This is the actually coordinate location to be drawn at
 	SDL_Rect dest;
-	dest.x = (origin.x + origin_offset.x);
-	dest.y = (origin.y + origin_offset.y);
+	dest.x = (get_origin().x + origin_offset.x);
+	dest.y = (get_origin().y + origin_offset.y);
 	dest.w = part_size;
 	dest.h = d_font->rect.h;
 
@@ -360,7 +330,7 @@ void draw_numbers(int number, int starting_line, enum DIRECTION direction)
 			distance_left--;
 			j = (j / divisor) ? 1 : j / divisor;
 		} while(distance_left > 0);
-		dest.x += (distance*pixel_width);
+		dest.x += (distance*get_world().x);
 
 	}
 
@@ -401,8 +371,8 @@ void mouse_event()
 			first_click_x = mouse_raw.x;
 			first_click_y = mouse_raw.y;
 
-			printf("Clicked at\nx: %d\ny: %d\n", ((((mouse_raw.x-origin.x+origin_offset.x))/pixel_width)),
-			   -(((mouse_raw.y)/pixel_height)-((origin_offset.y+origin.y+axes_horizontal_line_height)/pixel_height)));
+			printf("Clicked at\nx: %d\ny: %d\n", ((((mouse_raw.x-get_origin().x+origin_offset.x))/get_world().x)),
+			   -(((mouse_raw.y)/get_world().y)-((origin_offset.y+get_origin().y+axes_horizontal_line_height)/get_world().y)));
 
 		//	int temp_x = origin.x+origin_offset.x;
 			//int temp_y = origin.y+origin_offset.y;
@@ -419,7 +389,6 @@ void mouse_event()
 		//printf("Moving X by: %d\nMoving Y by: %d\n", origin_offset.x, origin_offset.y);
 	}
 }
-struct FLOAT_VECTOR2 gesture;
 
 void input()
 {
@@ -480,8 +449,8 @@ void input()
 					for(int n=0; n < NUMBER_OF_QUADRANTS; n++)
 					{
 
-						int quadrant_x = origin.x;
-						int quadrant_y = origin.y;
+						int quadrant_x = get_origin().x;
+						int quadrant_y = get_origin().y;
 
 						for(int i=0; i < GRAPH_HEIGHT; i++)
 							{
@@ -507,8 +476,8 @@ void input()
 					for(int n=0; n < NUMBER_OF_QUADRANTS; n++)
 					{
 
-						int quadrant_x = origin.x;
-						int quadrant_y = origin.y;
+						int quadrant_x = get_origin().x;
+						int quadrant_y = get_origin().y;
 
 						for(int i=0; i < GRAPH_HEIGHT; i++)
 						{
@@ -529,26 +498,9 @@ void input()
 					}
 			}
 	case SDL_WINDOWEVENT:
-
-		switch (e.window.event)
-		{
-		case SDL_WINDOWEVENT_SIZE_CHANGED:
-			// Change line coordinates to new window size
-			window_width_raw = e.window.data1;
-			window_height_raw = e.window.data2;
-
-			printf("Height: %d\nWidth: %d\n", e.window.data2, e.window.data1);
-
-			pixel_width = window_width_raw/ASPECT_RATIO.x;
-			pixel_height = window_height_raw/ASPECT_RATIO.y;
-
-			origin.x = window_width_raw/2;
-			origin.y = window_height_raw/2;
-			render_distance.x = window_width_raw;
-			render_distance.y = window_height_raw;
-
-			init_box();
-		}
+		update_world(e);
+		// Change graphbox coordinates to new window size
+		init_box();
 		break;
 		}
 	}
@@ -559,23 +511,23 @@ void input()
 
 void init_box()
 {
-	pixel_width = window_width_raw/ASPECT_RATIO.x;
-	pixel_height = window_height_raw/ASPECT_RATIO.y;
+	//pixel_width = window_width_raw/ASPECT_RATIO.x;
+	//pixel_height = window_height_raw/ASPECT_RATIO.y;
 	starting_spacing = .1;
 	spacing = starting_spacing;
 	spacing_limit = 10;
 
-	origin.x = window_width_raw/2;
-	origin.y = window_height_raw/2;
-	render_distance.x = window_width_raw;
-	render_distance.y = window_height_raw;
+	//get_origin().x = window_width_raw/2;
+	//origin.y = window_height_raw/2;
+	//render_distance.x = window_width_raw;
+	//render_distance.y = window_height_raw;
 
 	// starting x is -render_distance * 3 fills screen left, middle, and right
-	axes_horizontal_line_width = render_distance.x * 3;
-	axes_horizontal_line_height = 1*pixel_height;
+	axes_horizontal_line_width = get_render_distance().x * 3;
+	axes_horizontal_line_height = 1*get_world().y;
 
-	axes_vertical_line_width = 1*pixel_width;
-	axes_vertical_line_height = render_distance.y * 3;
+	axes_vertical_line_width = 1*get_world().x;
+	axes_vertical_line_height = get_render_distance().y * 3;
 
 	// Cleanup past textures
 	if(axes_horizontal_line.texture)
@@ -586,15 +538,15 @@ void init_box()
 		SDL_DestroyTexture(graph_box.texture);
 
 	create_sprite(&axes_horizontal_line, "../assets/horizontal_line.png",
-					axes_horizontal_line_width, axes_horizontal_line_height, -render_distance.x, origin.y);
+					axes_horizontal_line_width, axes_horizontal_line_height, -get_render_distance().x, get_origin().y);
 	create_sprite(&axes_vertical_line, "../assets/vertical_line.png",
-					axes_vertical_line_width, axes_vertical_line_height, origin.x, -render_distance.y);
+					axes_vertical_line_width, axes_vertical_line_height, get_origin().x, -get_render_distance().y);
 
-	create_sprite(&graph_box, "../assets/rect.png", 1*pixel_width, 1*pixel_height, 0, 0);
+	create_sprite(&graph_box, "../assets/rect.png", 1*get_world().y, 1*get_world().y, 0, 0);
 
 	for(int n=0; n < NUMBER_OF_QUADRANTS; n++)
 	{
-		ivec2 quadrant = {origin.x, origin.y};
+		ivec2 quadrant = {get_origin().x, get_origin().y};
 		ivec2 distance = {0, 0};
 
 		get_quadrant_pos(n, &quadrant, &distance);
@@ -607,8 +559,8 @@ void init_box()
 
 				graph[n][i][j].x = x+origin_offset.x;
 				graph[n][i][j].y = y+origin_offset.y;
-				graph[n][i][j].w = 1*pixel_width;
-				graph[n][i][j].h = 1*pixel_height;
+				graph[n][i][j].w = 1*get_world().x;
+				graph[n][i][j].h = 1*get_world().y;
 			}
 		}
 	}
@@ -630,28 +582,28 @@ void get_quadrant_pos(int location, ivec2 *quadrant, ivec2 *distance)
 	switch (location)
 	{
 			case 0:
-				quadrant->x += pixel_width/2;
-				quadrant->y -= pixel_height/2;
-				distance->x = pixel_width;
-				distance->y = -pixel_height;
+				quadrant->x += get_world().x/2;
+				quadrant->y -= get_world().y/2;
+				distance->x = get_world().x;
+				distance->y = -get_world().y;
 				break;
 			case 1:
-				quadrant->x -= pixel_width/2;
-				quadrant->y -= pixel_height/2;
-				distance->x = -pixel_width;
-				distance->y = -pixel_height;
+				quadrant->x -= get_world().x/2;
+				quadrant->y -= get_world().y/2;
+				distance->x = -get_world().x;
+				distance->y = -get_world().y;
 				break;
 			case 2:
-				quadrant->x -= pixel_width/2;
-				quadrant->y += pixel_height/2;
-				distance->x = -pixel_width;
-				distance->y = pixel_height;
+				quadrant->x -= get_world().x/2;
+				quadrant->y += get_world().y/2;
+				distance->x = -get_world().x;
+				distance->y = get_world().y;
 				break;
 			case 3:
-				quadrant->x += pixel_width/2;
-				quadrant->y += pixel_height/2;
-				distance->x = pixel_width;
-				distance->y = pixel_height;
+				quadrant->x += get_world().x/2;
+				quadrant->y += get_world().y/2;
+				distance->x = get_world().x;
+				distance->y = get_world().y;
 				break;
 	}
 }
@@ -660,8 +612,8 @@ ivec2 conv_units(int x, int y)
 {
 	struct INT_VECTOR2 temp;
 
-	temp.x /= pixel_width;
-	temp.y /= pixel_height;
+	temp.x /= get_world().x;
+	temp.y /= get_world().y;
 
 	return temp;
 }
@@ -670,8 +622,8 @@ ivec2 conv_raw(int x, int y)
 {
 	struct INT_VECTOR2 temp;
 
-	temp.x *= (window_width_raw/pixel_width);
-	temp.y *= (window_height_raw/pixel_height);
+	temp.x *= (get_screen().x/get_world().x);
+	temp.y *= (get_screen().y/get_world().y);
 
 	return temp;
 }

@@ -15,13 +15,6 @@ typedef struct SPRITE {
 
 }SPRITE;
 
-struct INT_VECTOR4 {
-    int width;
-    int height;
-    int x;
-    int y;
-};
-
 SPRITE* load_texture(int number, int font_size);
 void load_string_font(SDL_Renderer* renderer, SPRITE* sprite, SDL_Texture* texture, char* str);
 void font_init(SDL_Renderer* renderer);
