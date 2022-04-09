@@ -60,7 +60,7 @@ static ivec2 origin;
 // Used for drawing graph
 static ivec2 origin_offset = { 0, 0 };
 // Lower means faster
-static ivec2 mouse_speed = { 60, 60 };
+static ivec2 mouse_speed = { 30, 30 };
 static ivec2 coordinate_location = { 0, 0 };
 static ivec2 render_distance;
 
@@ -88,6 +88,7 @@ static char str_num_buffer[MAX_STR_BUFFER];
 
 static bool quit = false;
 
+// declarations
 static void initialize(void);
 static void input(void);
 static void cleanup(void);
@@ -99,10 +100,11 @@ static void draw_numbers(int position, int offset, enum DIRECTION direction);
 static ivec2 conv_units(int a, int b);
 static ivec2 conv_raw(int a, int b);
 static void create_sprite(SPRITE* sprite, char* path, int width, int height, int x, int y);
-static bool is_on_screen(SDL_Rect rect);
+static bool is_on_screen(SDL_Rect* rect);
 static void draw_mouse_coordinates(int x, int y);
 static int get_number(int num, int part_size);
 static void init_box(void);
+void get_quadrant_pos(int location, ivec2 *quadrant, ivec2 *distance);
 
 SPRITE graph_box;
 
@@ -199,41 +201,14 @@ void update(void)
 
 	for(int n=0; n < NUMBER_OF_QUADRANTS; n++)
 	{
+		ivec2 quadrant = {origin.x, origin.y};
+		ivec2 distance = {0, 0};
 
-		int quadrant_x = origin.x;
-		int quadrant_y = origin.y;
+		get_quadrant_pos(n, &quadrant, &distance);
 
-		int distance_x = 0;
-		int distance_y = 0;
-		switch (n) {
-			case 0:
-				quadrant_x += pixel_width/2;
-				quadrant_y -= pixel_height/2;
-				distance_x = pixel_width;
-				distance_y = -pixel_height;
-				break;
-			case 1:
-				quadrant_x -= pixel_width/2;
-				quadrant_y -= pixel_height/2;
-				distance_x = -pixel_width;
-				distance_y = -pixel_height;
-				break;
-			case 2:
-				quadrant_x -= pixel_width/2;
-				quadrant_y += pixel_height/2;
-				distance_x = -pixel_width;
-				distance_y = pixel_height;
-				break;
-			case 3:
-				quadrant_x += pixel_width/2;
-				quadrant_y += pixel_height/2;
-				distance_x = pixel_width;
-				distance_y = pixel_height;
-				break;
-		}
-		for(int i=0, y = quadrant_y; i < GRAPH_HEIGHT; i++, y+=distance_y)
+		for(int i=0, y = quadrant.y; i < GRAPH_HEIGHT; i++, y+=distance.y)
 		{
-			for(int j =0, x = quadrant_x; j < GRAPH_WIDTH; j++, x+=distance_x)
+			for(int j =0, x = quadrant.x; j < GRAPH_WIDTH; j++, x+=distance.x)
 			{
 
 				graph[n][i][j].x = x + origin_offset.x;
@@ -245,6 +220,23 @@ void update(void)
 	axes_horizontal_line.rect.y = coordinate_location.y;
 }
 
+bool is_on_screen(SDL_Rect* rect)
+{
+	bool intersected = false;
+
+	SDL_Rect window_rect;
+	window_rect.w = window_width_raw;
+	window_rect.h = window_height_raw;
+	window_rect.x = 0 + origin_offset.x;
+	window_rect.y = 0 + origin_offset.y;
+
+	if(SDL_HasIntersection(&window_rect, rect))
+		intersected = true;
+
+
+	return intersected;
+}
+
 void draw_rect(SPRITE sprite)
 {
 	for(int n=0; n < NUMBER_OF_QUADRANTS; n++)
@@ -253,7 +245,8 @@ void draw_rect(SPRITE sprite)
 		{
 			for(int j = 0; j < GRAPH_WIDTH; j++)
 			{
-				SDL_RenderCopy(renderer, graph_box.texture, NULL, &(graph[n][i][j]));
+				if(is_on_screen(&graph_box.rect))
+					SDL_RenderCopy(renderer, graph_box.texture, NULL, &(graph[n][i][j]));
 			}
 		}
 	}
@@ -334,6 +327,9 @@ void draw_numbers(int number, int starting_line, enum DIRECTION direction)
 		SDL_Rect dest_num = dest;
 
 		dest.x += part_size*distance_left;
+
+		if(!is_on_screen(&dest))
+			continue;
 
 		switch (distance_left) {
 			case 1:
@@ -598,41 +594,15 @@ void init_box()
 
 	for(int n=0; n < NUMBER_OF_QUADRANTS; n++)
 	{
-		int quadrant_x = origin.x;
-		int quadrant_y = origin.y;
+		ivec2 quadrant = {origin.x, origin.y};
+		ivec2 distance = {0, 0};
 
-		int distance_x = 0;
-		int distance_y = 0;
+		get_quadrant_pos(n, &quadrant, &distance);
 
-		switch (n) {
-			case 0:
-				quadrant_x += pixel_width/2;
-				quadrant_y -= pixel_height/2;
-				distance_x = pixel_width;
-				distance_y = -pixel_height;
-				break;
-			case 1:
-				quadrant_x -= pixel_width/2;
-				quadrant_y -= pixel_height/2;
-				distance_x = -pixel_width;
-				distance_y = -pixel_height;
-				break;
-			case 2:
-				quadrant_x -= pixel_width/2;
-				quadrant_y += pixel_height/2;
-				distance_x = -pixel_width;
-				distance_y = pixel_height;
-				break;
-			case 3:
-				quadrant_x += pixel_height/2;
-				quadrant_y += pixel_height/2;
-				distance_x = pixel_width;
-				distance_y = pixel_height;
-				break;
-		}
-		for(int i=0, y = quadrant_y; i < GRAPH_HEIGHT; i++, y+=distance_y)
+
+		for(int i=0, y = quadrant.y; i < GRAPH_HEIGHT; i++, y+=distance.y)
 		{
-			for(int j =0, x = quadrant_x; j < GRAPH_WIDTH; j++, x+=distance_x)
+			for(int j =0, x = quadrant.x; j < GRAPH_WIDTH; j++, x+=distance.x)
 			{
 
 				graph[n][i][j].x = x+origin_offset.x;
@@ -655,6 +625,37 @@ static void create_sprite(SPRITE* sprite, char* path, int width, int height, int
 	SDL_FreeSurface(surface);
 }
 
+void get_quadrant_pos(int location, ivec2 *quadrant, ivec2 *distance)
+{
+	switch (location)
+	{
+			case 0:
+				quadrant->x += pixel_width/2;
+				quadrant->y -= pixel_height/2;
+				distance->x = pixel_width;
+				distance->y = -pixel_height;
+				break;
+			case 1:
+				quadrant->x -= pixel_width/2;
+				quadrant->y -= pixel_height/2;
+				distance->x = -pixel_width;
+				distance->y = -pixel_height;
+				break;
+			case 2:
+				quadrant->x -= pixel_width/2;
+				quadrant->y += pixel_height/2;
+				distance->x = -pixel_width;
+				distance->y = pixel_height;
+				break;
+			case 3:
+				quadrant->x += pixel_width/2;
+				quadrant->y += pixel_height/2;
+				distance->x = pixel_width;
+				distance->y = pixel_height;
+				break;
+	}
+}
+
 ivec2 conv_units(int x, int y)
 {
 	struct INT_VECTOR2 temp;
@@ -674,7 +675,6 @@ ivec2 conv_raw(int x, int y)
 
 	return temp;
 }
-
 
 void cleanup(void)
 {
