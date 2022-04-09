@@ -19,8 +19,6 @@
 // For sleep();
 #include <unistd.h>
 #include <SDL2/SDL_platform.h>
-#include "../include/platform.h"
-
 // Font things
 #include "../include/font_handler.h"
 //
@@ -69,9 +67,9 @@ const static struct INT_VECTOR2 ASPECT_RATIO = { 16, 9};
 
 // Amount of space away from y and x axis
 // Used for drawing lines in the quadrant
-int spacing;
-int starting_spacing;
-int spacing_limit;
+float spacing;
+float starting_spacing;
+float spacing_limit;
 
 static float fps;
 static const float FPS_TARGET = 60.0f;
@@ -103,6 +101,7 @@ static void create_sprite(SPRITE* sprite, char* path, int width, int height, int
 static bool is_on_screen(SDL_Rect rect);
 static void draw_mouse_coordinates(int x, int y);
 static int get_number(int num, int part_size);
+static void init_box(void);
 
 SPRITE graph_box;
 
@@ -121,8 +120,8 @@ void initialize(void)
 
 	SDL_Init(SDL_INIT_VIDEO);
 
-	window = SDL_CreateWindow(WINDOW_TITLE, WINDOW_POSX, WINDOW_POSY, 1920,
-							  1080, SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_RESIZABLE);
+	window = SDL_CreateWindow(WINDOW_TITLE, WINDOW_POSX, WINDOW_POSY, 800,
+							  600, SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_RESIZABLE);
 
 	renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 
@@ -130,9 +129,9 @@ void initialize(void)
 
 	pixel_width = window_width_raw/ASPECT_RATIO.x;
 	pixel_height = window_height_raw/ASPECT_RATIO.y;
-	starting_spacing = 1 * pixel_width;
+	starting_spacing = .1f;
 	spacing = starting_spacing;
-	spacing_limit = 3 * pixel_width;
+	spacing_limit = 10;
 
 	origin.x = window_width_raw/2;
 	origin.y = window_height_raw/2;
@@ -150,61 +149,7 @@ void initialize(void)
 	SDL_GL_GetAttribute(SDL_GL_DOUBLEBUFFER, &buffering);
 
 	font_init(renderer);
-
-	create_sprite(&axes_horizontal_line, "../assets/horizontal_line.png",
-					axes_horizontal_line_width, axes_horizontal_line_height, -render_distance.x, origin.y);
-	create_sprite(&axes_vertical_line, "../assets/vertical_line.png",
-					axes_vertical_line_width, axes_vertical_line_height, origin.x, -render_distance.y);
-
-	create_sprite(&graph_box, "../assets/rect.png", 1*pixel_width, 1*pixel_height, 0, 0);
-
-	for(int n=0; n < NUMBER_OF_QUADRANTS; n++)
-	{
-		int quadrant_x = origin.x;
-		int quadrant_y = origin.y;
-
-		int distance_x = 0;
-		int distance_y = 0;
-
-		switch (n) {
-			case 0:
-				quadrant_x += pixel_width/2;
-				quadrant_y -= pixel_height/2;
-				distance_x = pixel_width;
-				distance_y = -pixel_height;
-				break;
-			case 1:
-				quadrant_x -= pixel_width/2;
-				quadrant_y -= pixel_height/2;
-				distance_x = -pixel_width;
-				distance_y = -pixel_height;
-				break;
-			case 2:
-				quadrant_x -= pixel_width/2;
-				quadrant_y += pixel_height/2;
-				distance_x = -pixel_width;
-				distance_y = pixel_height;
-				break;
-			case 3:
-				quadrant_x += pixel_height/2;
-				quadrant_y += pixel_height/2;
-				distance_x = pixel_width;
-				distance_y = pixel_height;
-				break;
-	}
-		for(int i=0, y = quadrant_y; i < GRAPH_HEIGHT; i++, y+=distance_y)
-		{
-			for(int j =0, x = quadrant_x; j < GRAPH_WIDTH; j++, x+=distance_x)
-			{
-
-				graph[n][i][j].x = x+origin_offset.x;
-				graph[n][i][j].y = y+origin_offset.y;
-				graph[n][i][j].w = 1*pixel_width;
-				graph[n][i][j].h = 1*pixel_height;
-			}
-		}
-	}
-
+	init_box();
 }
 
 int main(void)
@@ -261,7 +206,7 @@ void update(void)
 		int distance_y = 0;
 		switch (n) {
 			case 0:
-				quadrant_x += axes_vertical_line_width/2;
+				quadrant_x += pixel_width/2;
 				quadrant_y -= pixel_height/2;
 				distance_x = pixel_width;
 				distance_y = -pixel_height;
@@ -279,7 +224,7 @@ void update(void)
 				distance_y = pixel_height;
 				break;
 			case 3:
-				quadrant_x += pixel_height/2;
+				quadrant_x += pixel_width/2;
 				quadrant_y += pixel_height/2;
 				distance_x = pixel_width;
 				distance_y = pixel_height;
@@ -290,8 +235,8 @@ void update(void)
 			for(int j =0, x = quadrant_x; j < GRAPH_WIDTH; j++, x+=distance_x)
 			{
 
-				graph[n][i][j].x = x+origin_offset.x;
-				graph[n][i][j].y = y+origin_offset.y;
+				graph[n][i][j].x = x + origin_offset.x;
+				graph[n][i][j].y = y + origin_offset.y;
 			}
 		}
 	}
@@ -379,13 +324,15 @@ void draw_numbers(int number, int starting_line, enum DIRECTION direction)
 	int divisor = 1000;
 	//int distance = 0;
 
-	for(int i=1; i < 100; i++)
+	for(int i=1; i < 30; i++)
 	{
-		dest.x += part_size*2;
 		int distance_left = get_number(i, 0);
-		int distance = 0;
+		int distance = distance_left;
 		int place = 0;
 		int j=i;
+		SDL_Rect dest_num = dest;
+
+		dest.x += part_size*distance_left;
 
 		switch (distance_left) {
 			case 1:
@@ -405,18 +352,18 @@ void draw_numbers(int number, int starting_line, enum DIRECTION direction)
 			//dest.y = (origin.y + origin_offset.y);
 			place = j % divisor;
 			rect_place.x = part_size * place;
-			dest.x += (distance_left*part_size);
-			//printf("J: %d\nPlace: %d\nRect_place.x: %d\nDest.x: %d\n", j, place, rect_place.x, dest.x);
+
+			//printf("Running Num: %d\nJ: %d\nPlace: %d\nRect_place.x: %d\nDest.x: %d\n", i, j, place, rect_place.x, dest.x);
+
+			//if(i > 19)
+				//sleep(2);
 			SDL_RenderCopy(renderer, d_font->texture, &rect_place, &dest);
 
-			j/=10;
-			//place+=(part_size);
+			dest.x -= part_size;
 			distance_left--;
-			distance++;
-			//printf("Subtracting distance\n");
-			j =  (j / divisor) ? 1 : j / divisor;
-
+			j = (j / divisor) ? 1 : j / divisor;
 		} while(distance_left > 0);
+		dest.x += (distance*pixel_width);
 
 	}
 
@@ -533,48 +480,167 @@ void input()
 			case SDL_MOUSEWHEEL:
 				if (e.wheel.y > 0)
 				{
+					for(int n=0; n < NUMBER_OF_QUADRANTS; n++)
+					{
+
+						int quadrant_x = origin.x;
+						int quadrant_y = origin.y;
+
+						for(int i=0; i < GRAPH_HEIGHT; i++)
+							{
+								for(int j =0; j < GRAPH_WIDTH; j++)
+								{
+									graph[n][i][j].x-=spacing;
+									graph[n][i][j].y-=spacing;
+
+									graph[n][i][j].w-=spacing;
+									graph[n][i][j].h-=spacing;
+								}
+							}
+					}
 					if (spacing > spacing_limit)
 						spacing = starting_spacing;
 					else
-						spacing+=3;
+					{
+						spacing+=.1;
+					}
 				}
 				else if (e.wheel.y < 0)
 				{
+					for(int n=0; n < NUMBER_OF_QUADRANTS; n++)
+					{
+
+						int quadrant_x = origin.x;
+						int quadrant_y = origin.y;
+
+						for(int i=0; i < GRAPH_HEIGHT; i++)
+						{
+							for(int j =0; j < GRAPH_WIDTH; j++)
+							{
+								graph[n][i][j].w+=spacing;
+								graph[n][i][j].h+=spacing;
+							}
+						}
+					}
 					if (spacing <= starting_spacing)
+					{
 						spacing = spacing_limit;
+					}
 					else
-						spacing-=3;
-				}
+					{
+						spacing-=.1;
+					}
+			}
 	case SDL_WINDOWEVENT:
 
-				switch (e.window.event)
-				{
-				case SDL_WINDOWEVENT_SIZE_CHANGED:
-					/*
-					** Change line coordinates to new window size
-					*/
-					// printf("First time called\n");
-					// sleep(5);
-					window_width_raw = e.window.data1;
-					window_height_raw = e.window.data2;
+		switch (e.window.event)
+		{
+		case SDL_WINDOWEVENT_SIZE_CHANGED:
+			// Change line coordinates to new window size
+			window_width_raw = e.window.data1;
+			window_height_raw = e.window.data2;
 
-					printf("Height: %d\nWidth: %d\n", e.window.data2, e.window.data1);
+			printf("Height: %d\nWidth: %d\n", e.window.data2, e.window.data1);
 
-					pixel_width = window_width_raw/ASPECT_RATIO.x;
-					pixel_height = window_height_raw/ASPECT_RATIO.y;
+			pixel_width = window_width_raw/ASPECT_RATIO.x;
+			pixel_height = window_height_raw/ASPECT_RATIO.y;
 
-					origin.x = window_width_raw/2;
-					origin.y = window_height_raw/2;
-					render_distance.x = window_width_raw;
-					render_distance.y = window_height_raw;
+			origin.x = window_width_raw/2;
+			origin.y = window_height_raw/2;
+			render_distance.x = window_width_raw;
+			render_distance.y = window_height_raw;
 
-					break;
-				}
-			}
+			init_box();
+		}
+		break;
+		}
 	}
 
 	mouse_event();
 	SDL_PumpEvents();
+}
+
+void init_box()
+{
+	pixel_width = window_width_raw/ASPECT_RATIO.x;
+	pixel_height = window_height_raw/ASPECT_RATIO.y;
+	starting_spacing = .1;
+	spacing = starting_spacing;
+	spacing_limit = 10;
+
+	origin.x = window_width_raw/2;
+	origin.y = window_height_raw/2;
+	render_distance.x = window_width_raw;
+	render_distance.y = window_height_raw;
+
+	// starting x is -render_distance * 3 fills screen left, middle, and right
+	axes_horizontal_line_width = render_distance.x * 3;
+	axes_horizontal_line_height = 1*pixel_height;
+
+	axes_vertical_line_width = 1*pixel_width;
+	axes_vertical_line_height = render_distance.y * 3;
+
+	// Cleanup past textures
+	if(axes_horizontal_line.texture)
+		SDL_DestroyTexture(axes_horizontal_line.texture);
+	if(axes_vertical_line.texture)
+		SDL_DestroyTexture(axes_vertical_line.texture);
+	if(graph_box.texture)
+		SDL_DestroyTexture(graph_box.texture);
+
+	create_sprite(&axes_horizontal_line, "../assets/horizontal_line.png",
+					axes_horizontal_line_width, axes_horizontal_line_height, -render_distance.x, origin.y);
+	create_sprite(&axes_vertical_line, "../assets/vertical_line.png",
+					axes_vertical_line_width, axes_vertical_line_height, origin.x, -render_distance.y);
+
+	create_sprite(&graph_box, "../assets/rect.png", 1*pixel_width, 1*pixel_height, 0, 0);
+
+	for(int n=0; n < NUMBER_OF_QUADRANTS; n++)
+	{
+		int quadrant_x = origin.x;
+		int quadrant_y = origin.y;
+
+		int distance_x = 0;
+		int distance_y = 0;
+
+		switch (n) {
+			case 0:
+				quadrant_x += pixel_width/2;
+				quadrant_y -= pixel_height/2;
+				distance_x = pixel_width;
+				distance_y = -pixel_height;
+				break;
+			case 1:
+				quadrant_x -= pixel_width/2;
+				quadrant_y -= pixel_height/2;
+				distance_x = -pixel_width;
+				distance_y = -pixel_height;
+				break;
+			case 2:
+				quadrant_x -= pixel_width/2;
+				quadrant_y += pixel_height/2;
+				distance_x = -pixel_width;
+				distance_y = pixel_height;
+				break;
+			case 3:
+				quadrant_x += pixel_height/2;
+				quadrant_y += pixel_height/2;
+				distance_x = pixel_width;
+				distance_y = pixel_height;
+				break;
+		}
+		for(int i=0, y = quadrant_y; i < GRAPH_HEIGHT; i++, y+=distance_y)
+		{
+			for(int j =0, x = quadrant_x; j < GRAPH_WIDTH; j++, x+=distance_x)
+			{
+
+				graph[n][i][j].x = x+origin_offset.x;
+				graph[n][i][j].y = y+origin_offset.y;
+				graph[n][i][j].w = 1*pixel_width;
+				graph[n][i][j].h = 1*pixel_height;
+			}
+		}
+	}
 }
 
 static void create_sprite(SPRITE* sprite, char* path, int width, int height, int x, int y)
