@@ -1,20 +1,20 @@
 #include "../include/world.h"
 #include "../include/datatypes.h"
 #include <SDL2/SDL_events.h>
+#include <stdbool.h>
+#include <SDL2/SDL.h>
 
-typedef struct WORLD {
-    ivec2 world_dimensions;
-    ivec2 screen_dimensions;
-    ivec2 ASPECT_RATIO;
-    ivec2 origin;
-    ivec2 render_distance;
-}myworld;
-
+typedef struct WORLD myworld;
 static myworld world;
+static SDL_Rect window_rect;
 
 void init_world(SDL_Window *window)
 {
     SDL_GetWindowSize(window, &world.screen_dimensions.x, &world.screen_dimensions.y);
+    window_rect.w = world.screen_dimensions.x;
+    window_rect.h = world.screen_dimensions.y;
+    window_rect.x = 0;
+    window_rect.y = 0;
     world.ASPECT_RATIO.x = 16;
     world.ASPECT_RATIO.y = 9;
     world.world_dimensions.x = world.screen_dimensions.x/world.ASPECT_RATIO.x;
@@ -25,6 +25,11 @@ void init_world(SDL_Window *window)
     world.render_distance.x = world.screen_dimensions.x;
     world.render_distance.y = world.screen_dimensions.y;
 
+}
+
+struct WORLD* get_world(void)
+{
+    return &world;
 }
 
 void update_world(SDL_Event event)
@@ -49,27 +54,42 @@ void update_world(SDL_Event event)
                     world.origin.y = world.screen_dimensions.y/2;
                     world.render_distance.x = world.screen_dimensions.x;
                     world.render_distance.y = world.screen_dimensions.y;
+                    window_rect.w = world.screen_dimensions.x;
+                    window_rect.h = world.screen_dimensions.y;
             }
             break;
     }
 }
 
-ivec2 get_screen(void)
+bool is_on_screen(SDL_Rect* rect)
 {
-    return world.screen_dimensions;
+    bool intersected = false;
+
+    if(SDL_HasIntersection(rect, &window_rect))
+    {
+        intersected = true;
+    }
+
+    return intersected;
 }
 
-ivec2 get_world(void)
+
+ivec2 conv_units(int x, int y)
 {
-    return world.world_dimensions;
+    struct INT_VECTOR2 temp;
+
+    temp.x /= world.world_dimensions.x;
+    temp.y /= world.world_dimensions.y;
+
+    return temp;
 }
 
-ivec2 get_render_distance(void)
+ivec2 conv_raw(int x, int y)
 {
-    return world.render_distance;
-}
+    struct INT_VECTOR2 temp;
 
-ivec2 get_origin(void)
-{
-    return world.origin;
+    temp.x *= (world.screen_dimensions.x/world.world_dimensions.x);
+    temp.y *= (world.screen_dimensions.y/world.world_dimensions.y);
+
+    return temp;
 }

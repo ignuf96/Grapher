@@ -41,7 +41,7 @@ static SDL_Event e;
 // Used for drawing graph
 static ivec2 origin_offset = { 0, 0 };
 // Lower means faster
-static ivec2 mouse_speed = { 30, 30 };
+static ivec2 mouse_speed = { 15, 15 };
 static ivec2 coordinate_location = { 0, 0 };
 // Amount of space away from y and x axis
 // Used for drawing lines in the quadrant
@@ -74,22 +74,20 @@ static void draw(void);
 static void update(void);
 static void draw_coordinates(void);
 static void draw_numbers(int position, int offset, enum DIRECTION direction);
-static ivec2 conv_units(int a, int b);
-static ivec2 conv_raw(int a, int b);
 static void create_sprite(SPRITE* sprite, char* path, int width, int height, int x, int y);
-static bool is_on_screen(SDL_Rect* rect);
 static void draw_mouse_coordinates(int x, int y);
 static int get_number(int num, int part_size);
 static void init_box(void);
-void get_quadrant_pos(int location, ivec2 *quadrant, ivec2 *distance);
+static void get_quadrant_pos(int location, ivec2 *quadrant, ivec2 *distance);
 
 SPRITE graph_box;
+SPRITE debug_box;
 
 #define NUMBER_OF_QUADRANTS 4
 
 // has to be same width and height or else causes bug
-#define GRAPH_WIDTH 300
-#define GRAPH_HEIGHT 300
+#define GRAPH_WIDTH 100
+#define GRAPH_HEIGHT 100
 
 SDL_Rect graph[NUMBER_OF_QUADRANTS][GRAPH_WIDTH][GRAPH_HEIGHT];
 
@@ -100,8 +98,8 @@ void initialize(void)
 
 	SDL_Init(SDL_INIT_VIDEO);
 
-	window = SDL_CreateWindow(WINDOW_TITLE, WINDOW_POSX, WINDOW_POSY, 800,
-							  600, SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_RESIZABLE);
+	window = SDL_CreateWindow(WINDOW_TITLE, WINDOW_POSX, WINDOW_POSY, 1920,
+							  1080, SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_RESIZABLE);
 
 	renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 
@@ -112,11 +110,12 @@ void initialize(void)
 	spacing_limit = 10;
 
 	// starting x is -render_distance * 3 fills screen left, middle, and right
-	axes_horizontal_line_width = get_render_distance().x * 3;
-	axes_horizontal_line_height = 1*get_world().y;
+	axes_horizontal_line_width = get_world()->render_distance.x * 3;
+	axes_horizontal_line_height = 1*get_world()->world_dimensions.y;
+	axes_vertical_line_width = 1*get_world()->world_dimensions.x;
+	axes_vertical_line_height = get_world()->render_distance.y * 3;
 
-	axes_vertical_line_width = 1*get_world().x;
-	axes_vertical_line_height = get_render_distance().y * 3;
+	create_sprite(&debug_box, "../assets/debugrect.png", 1*get_world()->screen_dimensions.y/2, 1*get_world()->screen_dimensions.y/2, 0, 0);
 
 	int buffering;
 	SDL_GL_GetAttribute(SDL_GL_DOUBLEBUFFER, &buffering);
@@ -127,7 +126,6 @@ void initialize(void)
 
 int main(void)
 {
-	//printf("Get number: %d\n", get_number(10, 0));
 	initialize();
 	// ADAPTIVE SYNC (-1) IMMEDIATE(0)
 	SDL_GL_SetSwapInterval(1);
@@ -143,7 +141,6 @@ int main(void)
 		{
 			int computer_is_too_slow_limit = 30;
 
-
 			while((next_game_step <= now) && (computer_is_too_slow_limit--))
 			{
 				update();
@@ -157,8 +154,6 @@ int main(void)
 		} else
 			SDL_Delay(next_game_step - now);
 }
-
-
 	cleanup();
 
 	return 0;
@@ -166,12 +161,15 @@ int main(void)
 
 void update(void)
 {
-	coordinate_location.x = origin_offset.x + get_origin().x;
-	coordinate_location.y = origin_offset.y + get_origin().y;
+	coordinate_location.x = origin_offset.x + get_world()->origin.x;
+	coordinate_location.y = origin_offset.y + get_world()->origin.y;
+
+	printf("Origin_offset.x: %d\nOrigin_offset.y: %d\nCoordinateX: %d\nCoordinateY: %d\n",
+		   origin_offset.x, origin_offset.y, coordinate_location.x, coordinate_location.y);
 
 	for(int n=0; n < NUMBER_OF_QUADRANTS; n++)
 	{
-		ivec2 quadrant = {get_origin().x, get_origin().y};
+		ivec2 quadrant = {get_world()->origin.x, get_world()->origin.y};
 		ivec2 distance = {0, 0};
 
 		get_quadrant_pos(n, &quadrant, &distance);
@@ -180,7 +178,6 @@ void update(void)
 		{
 			for(int j =0, x = quadrant.x; j < GRAPH_WIDTH; j++, x+=distance.x)
 			{
-
 				graph[n][i][j].x = x + origin_offset.x;
 				graph[n][i][j].y = y + origin_offset.y;
 			}
@@ -190,22 +187,6 @@ void update(void)
 	axes_horizontal_line.rect.y = coordinate_location.y;
 }
 
-bool is_on_screen(SDL_Rect* rect)
-{
-	bool intersected = false;
-
-	SDL_Rect window_rect;
-	window_rect.w = get_screen().x;
-	window_rect.h = get_screen().y;
-	window_rect.x = 0 + origin_offset.x;
-	window_rect.y = 0 + origin_offset.y;
-
-	if(SDL_HasIntersection(&window_rect, rect))
-		intersected = true;
-
-
-	return intersected;
-}
 
 void draw_rect(SPRITE sprite)
 {
@@ -215,7 +196,7 @@ void draw_rect(SPRITE sprite)
 		{
 			for(int j = 0; j < GRAPH_WIDTH; j++)
 			{
-				if(is_on_screen(&graph_box.rect))
+				if(is_on_screen(&graph[n][i][j]))
 					SDL_RenderCopy(renderer, graph_box.texture, NULL, &(graph[n][i][j]));
 			}
 		}
@@ -225,7 +206,7 @@ void draw_rect(SPRITE sprite)
 void draw(void)
 {
 	// set background color and clear screen with it
-	SDL_SetRenderDrawColor(renderer, 16, 0, 2, 255);
+	SDL_SetRenderDrawColor(renderer, 17, 7, 12, 255);
 	SDL_RenderClear(renderer);
 
 	// draw numbers
@@ -234,11 +215,11 @@ void draw(void)
 	int number = 1;
 	int starting_line = 1;
 	draw_numbers(number, starting_line, D_RIGHT);
-
+	draw_numbers(-1, -1, D_LEFT);
 
 	draw_rect(graph_box);
 
-	//draw_axes();
+	// draw axes()
 	SDL_RenderCopy(renderer, axes_horizontal_line.texture, NULL, &axes_horizontal_line.rect);
 	SDL_RenderCopy(renderer, axes_vertical_line.texture, NULL, &axes_vertical_line.rect);
 }
@@ -254,18 +235,14 @@ void draw_numbers(int number, int starting_line, enum DIRECTION direction)
 
 		if((d_font->rect.w*2) == spacing)
 		{
-			//printf("Similar size!!!%d", spacing);
 			font_size = i;
 		}
 	}
-
-	SPRITE *d_font = load_texture(10, font_size);
+	SPRITE *d_font = number > 0 ? load_texture(10, font_size) : load_texture(-10, font_size);
 	int part_size = d_font->rect.w / 10;
 
-
-	d_font->rect.x = (get_origin().x + origin_offset.x);
-	d_font->rect.y = (get_origin().y + origin_offset.y);
-
+	d_font->rect.x = (get_world()->origin.x + origin_offset.x);
+	d_font->rect.y = (get_world()->origin.y + origin_offset.y);
 
 	SDL_Rect rect_place;
 	// This selects a part from the texture
@@ -277,16 +254,12 @@ void draw_numbers(int number, int starting_line, enum DIRECTION direction)
 
 	// This is the actually coordinate location to be drawn at
 	SDL_Rect dest;
-	dest.x = (get_origin().x + origin_offset.x);
-	dest.y = (get_origin().y + origin_offset.y);
+	dest.x = (get_world()->origin.x + origin_offset.x);
+	dest.y = (get_world()->origin.y + origin_offset.y);
 	dest.w = part_size;
 	dest.h = d_font->rect.h;
 
-	//SDL_RenderCopy(renderer, d_font->texture, &rect_place, &dest);
-
-
 	int divisor = 1000;
-	//int distance = 0;
 
 	for(int i=1; i < 30; i++)
 	{
@@ -314,24 +287,19 @@ void draw_numbers(int number, int starting_line, enum DIRECTION direction)
 		}
 
 		do {
-			//printf("I: %d\nDistance: %d\n", i, distance);
-
-			//dest.y = (origin.y + origin_offset.y);
 			place = j % divisor;
 			rect_place.x = part_size * place;
 
 			//printf("Running Num: %d\nJ: %d\nPlace: %d\nRect_place.x: %d\nDest.x: %d\n", i, j, place, rect_place.x, dest.x);
 
-			//if(i > 19)
-				//sleep(2);
 			SDL_RenderCopy(renderer, d_font->texture, &rect_place, &dest);
 
 			dest.x -= part_size;
 			distance_left--;
 			j = (j / divisor) ? 1 : j / divisor;
-		} while(distance_left > 0);
-		dest.x += (distance*get_world().x);
 
+		} while(distance_left > 0);
+		dest.x += (distance*get_world()->world_dimensions.x);
 	}
 
 }
@@ -353,7 +321,6 @@ int first_click_y = 0;
 Uint32 buttons;
 bool left_mousedown = false;
 
-
 void mouse_event()
 {
 	ivec2 mouse_units;
@@ -371,8 +338,8 @@ void mouse_event()
 			first_click_x = mouse_raw.x;
 			first_click_y = mouse_raw.y;
 
-			printf("Clicked at\nx: %d\ny: %d\n", ((((mouse_raw.x-get_origin().x+origin_offset.x))/get_world().x)),
-			   -(((mouse_raw.y)/get_world().y)-((origin_offset.y+get_origin().y+axes_horizontal_line_height)/get_world().y)));
+			printf("Clicked at\nx: %d\ny: %d\n", ((((mouse_raw.x-get_world()->origin.x+origin_offset.x))/get_world()->world_dimensions.x)),
+			   -(((mouse_raw.y)/get_world()->world_dimensions.y)-((origin_offset.y+get_world()->origin.y+axes_horizontal_line_height)/get_world()->world_dimensions.y)));
 
 		//	int temp_x = origin.x+origin_offset.x;
 			//int temp_y = origin.y+origin_offset.y;
@@ -449,8 +416,8 @@ void input()
 					for(int n=0; n < NUMBER_OF_QUADRANTS; n++)
 					{
 
-						int quadrant_x = get_origin().x;
-						int quadrant_y = get_origin().y;
+						int quadrant_x = get_world()->origin.x;
+						int quadrant_y = get_world()->origin.y;
 
 						for(int i=0; i < GRAPH_HEIGHT; i++)
 							{
@@ -476,8 +443,8 @@ void input()
 					for(int n=0; n < NUMBER_OF_QUADRANTS; n++)
 					{
 
-						int quadrant_x = get_origin().x;
-						int quadrant_y = get_origin().y;
+						int quadrant_x = get_world()->origin.x;
+						int quadrant_y = get_world()->origin.y;
 
 						for(int i=0; i < GRAPH_HEIGHT; i++)
 						{
@@ -511,23 +478,16 @@ void input()
 
 void init_box()
 {
-	//pixel_width = window_width_raw/ASPECT_RATIO.x;
-	//pixel_height = window_height_raw/ASPECT_RATIO.y;
 	starting_spacing = .1;
 	spacing = starting_spacing;
 	spacing_limit = 10;
 
-	//get_origin().x = window_width_raw/2;
-	//origin.y = window_height_raw/2;
-	//render_distance.x = window_width_raw;
-	//render_distance.y = window_height_raw;
-
 	// starting x is -render_distance * 3 fills screen left, middle, and right
-	axes_horizontal_line_width = get_render_distance().x * 3;
-	axes_horizontal_line_height = 1*get_world().y;
+	axes_horizontal_line_width = get_world()->render_distance.x * 3;
+	axes_horizontal_line_height = 1*get_world()->world_dimensions.y;
 
-	axes_vertical_line_width = 1*get_world().x;
-	axes_vertical_line_height = get_render_distance().y * 3;
+	axes_vertical_line_width = 1*get_world()->world_dimensions.x;
+	axes_vertical_line_height = get_world()->render_distance.y * 3;
 
 	// Cleanup past textures
 	if(axes_horizontal_line.texture)
@@ -538,15 +498,15 @@ void init_box()
 		SDL_DestroyTexture(graph_box.texture);
 
 	create_sprite(&axes_horizontal_line, "../assets/horizontal_line.png",
-					axes_horizontal_line_width, axes_horizontal_line_height, -get_render_distance().x, get_origin().y);
+					axes_horizontal_line_width, axes_horizontal_line_height, -get_world()->render_distance.x, get_world()->origin.y);
 	create_sprite(&axes_vertical_line, "../assets/vertical_line.png",
-					axes_vertical_line_width, axes_vertical_line_height, get_origin().x, -get_render_distance().y);
+					axes_vertical_line_width, axes_vertical_line_height, get_world()->origin.x, -get_world()->render_distance.y);
 
-	create_sprite(&graph_box, "../assets/rect.png", 1*get_world().y, 1*get_world().y, 0, 0);
+	create_sprite(&graph_box, "../assets/rect.png", 1*get_world()->world_dimensions.y, 1*get_world()->world_dimensions.y, 0, 0);
 
 	for(int n=0; n < NUMBER_OF_QUADRANTS; n++)
 	{
-		ivec2 quadrant = {get_origin().x, get_origin().y};
+		ivec2 quadrant = {get_world()->origin.x, get_world()->origin.y};
 		ivec2 distance = {0, 0};
 
 		get_quadrant_pos(n, &quadrant, &distance);
@@ -559,8 +519,8 @@ void init_box()
 
 				graph[n][i][j].x = x+origin_offset.x;
 				graph[n][i][j].y = y+origin_offset.y;
-				graph[n][i][j].w = 1*get_world().x;
-				graph[n][i][j].h = 1*get_world().y;
+				graph[n][i][j].w = 1*get_world()->world_dimensions.x;
+				graph[n][i][j].h = 1*get_world()->world_dimensions.y;
 			}
 		}
 	}
@@ -577,55 +537,35 @@ static void create_sprite(SPRITE* sprite, char* path, int width, int height, int
 	SDL_FreeSurface(surface);
 }
 
-void get_quadrant_pos(int location, ivec2 *quadrant, ivec2 *distance)
+static void get_quadrant_pos(int location, ivec2 *quadrant, ivec2 *distance)
 {
 	switch (location)
 	{
 			case 0:
-				quadrant->x += get_world().x/2;
-				quadrant->y -= get_world().y/2;
-				distance->x = get_world().x;
-				distance->y = -get_world().y;
+				quadrant->x += get_world()->world_dimensions.x/2;
+				quadrant->y -= get_world()->world_dimensions.y/2;
+				distance->x = get_world()->world_dimensions.x;
+				distance->y = -get_world()->world_dimensions.y;
 				break;
 			case 1:
-				quadrant->x -= get_world().x/2;
-				quadrant->y -= get_world().y/2;
-				distance->x = -get_world().x;
-				distance->y = -get_world().y;
+				quadrant->x -= get_world()->world_dimensions.x/2;
+				quadrant->y -= get_world()->world_dimensions.y/2;
+				distance->x = -get_world()->world_dimensions.x;
+				distance->y = -get_world()->world_dimensions.y;
 				break;
 			case 2:
-				quadrant->x -= get_world().x/2;
-				quadrant->y += get_world().y/2;
-				distance->x = -get_world().x;
-				distance->y = get_world().y;
+				quadrant->x -= get_world()->world_dimensions.x/2;
+				quadrant->y += get_world()->world_dimensions.y/2;
+				distance->x = -get_world()->world_dimensions.x;
+				distance->y = get_world()->world_dimensions.y;
 				break;
 			case 3:
-				quadrant->x += get_world().x/2;
-				quadrant->y += get_world().y/2;
-				distance->x = get_world().x;
-				distance->y = get_world().y;
+				quadrant->x += get_world()->world_dimensions.x/2;
+				quadrant->y += get_world()->world_dimensions.y/2;
+				distance->x = get_world()->world_dimensions.x;
+				distance->y = get_world()->world_dimensions.y;
 				break;
 	}
-}
-
-ivec2 conv_units(int x, int y)
-{
-	struct INT_VECTOR2 temp;
-
-	temp.x /= get_world().x;
-	temp.y /= get_world().y;
-
-	return temp;
-}
-
-ivec2 conv_raw(int x, int y)
-{
-	struct INT_VECTOR2 temp;
-
-	temp.x *= (get_screen().x/get_world().x);
-	temp.y *= (get_screen().y/get_world().y);
-
-	return temp;
 }
 
 void cleanup(void)
