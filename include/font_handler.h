@@ -15,8 +15,8 @@ typedef struct SPRITE {
 
 }SPRITE;
 
-SPRITE* load_texture(int number, int font_size);
-void load_string_font(SDL_Renderer* renderer, SPRITE* sprite, SDL_Texture* texture, char* str);
+SPRITE* load_texture(int font_size);
+SPRITE* load_sign(int size);
 void font_init(SDL_Renderer* renderer);
 void font_cleanup(void);
 

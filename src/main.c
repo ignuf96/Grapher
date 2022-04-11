@@ -18,6 +18,7 @@
 /* MAX VALUE FOR GRAPH LONG_MAX */
 #include <limits.h>
 // For sleep();
+#include <string.h>
 #include <unistd.h>
 #include <SDL2/SDL_platform.h>
 // Font things
@@ -41,7 +42,7 @@ static SDL_Event e;
 // Used for drawing graph
 static ivec2 origin_offset = { 0, 0 };
 // Lower means faster
-static ivec2 mouse_speed = { 15, 15 };
+static ivec2 mouse_speed = { 30, 30 };
 static ivec2 coordinate_location = { 0, 0 };
 // Amount of space away from y and x axis
 // Used for drawing lines in the quadrant
@@ -81,7 +82,7 @@ static void init_box(void);
 static void get_quadrant_pos(int location, ivec2 *quadrant, ivec2 *distance);
 
 SPRITE graph_box;
-SPRITE debug_box;
+SPRITE background;
 
 #define NUMBER_OF_QUADRANTS 4
 
@@ -90,6 +91,7 @@ SPRITE debug_box;
 #define GRAPH_HEIGHT 100
 
 SDL_Rect graph[NUMBER_OF_QUADRANTS][GRAPH_WIDTH][GRAPH_HEIGHT];
+SDL_Rect *graphp = &graph[0][0][0];
 
 void initialize(void)
 {
@@ -115,7 +117,7 @@ void initialize(void)
 	axes_vertical_line_width = 1*get_world()->world_dimensions.x;
 	axes_vertical_line_height = get_world()->render_distance.y * 3;
 
-	create_sprite(&debug_box, "../assets/debugrect.png", 1*get_world()->screen_dimensions.y/2, 1*get_world()->screen_dimensions.y/2, 0, 0);
+	create_sprite(&background, "../assets/background.jpg", get_world()->screen_dimensions.y, get_world()->screen_dimensions.y, 0, 0);
 
 	int buffering;
 	SDL_GL_GetAttribute(SDL_GL_DOUBLEBUFFER, &buffering);
@@ -159,6 +161,10 @@ int main(void)
 	return 0;
 }
 
+#define GRID_AMOUNT 180
+SDL_Rect rect_on_screen[GRID_AMOUNT];
+SDL_Rect *rect_screen = &rect_on_screen[0];
+
 void update(void)
 {
 	coordinate_location.x = origin_offset.x + get_world()->origin.x;
@@ -167,6 +173,9 @@ void update(void)
 	printf("Origin_offset.x: %d\nOrigin_offset.y: %d\nCoordinateX: %d\nCoordinateY: %d\n",
 		   origin_offset.x, origin_offset.y, coordinate_location.x, coordinate_location.y);
 
+	rect_screen = &rect_on_screen[0];
+	memset(&rect_on_screen, 0, sizeof rect_on_screen);
+	int onscreen = 0;
 	for(int n=0; n < NUMBER_OF_QUADRANTS; n++)
 	{
 		ivec2 quadrant = {get_world()->origin.x, get_world()->origin.y};
@@ -180,9 +189,17 @@ void update(void)
 			{
 				graph[n][i][j].x = x + origin_offset.x;
 				graph[n][i][j].y = y + origin_offset.y;
+
+				if(is_on_screen(&graph[n][i][j]))
+				{
+					*rect_screen = graph[n][i][j];
+					rect_screen++;
+					onscreen++;
+				}
 			}
 		}
 	}
+
 	axes_vertical_line.rect.x = coordinate_location.x;
 	axes_horizontal_line.rect.y = coordinate_location.y;
 }
@@ -190,17 +207,8 @@ void update(void)
 
 void draw_rect(SPRITE sprite)
 {
-	for(int n=0; n < NUMBER_OF_QUADRANTS; n++)
-	{
-		for(int i = 0; i < GRAPH_HEIGHT; i++)
-		{
-			for(int j = 0; j < GRAPH_WIDTH; j++)
-			{
-				if(is_on_screen(&graph[n][i][j]))
-					SDL_RenderCopy(renderer, graph_box.texture, NULL, &(graph[n][i][j]));
-			}
-		}
-	}
+	for(int i=0; i < GRID_AMOUNT; i++)
+		SDL_RenderCopy(renderer, graph_box.texture, NULL, &rect_on_screen[i]);
 }
 
 void draw(void)
@@ -208,6 +216,7 @@ void draw(void)
 	// set background color and clear screen with it
 	SDL_SetRenderDrawColor(renderer, 17, 7, 12, 255);
 	SDL_RenderClear(renderer);
+	SDL_RenderCopy(renderer, background.texture, NULL, NULL);
 
 	// draw numbers
 	int render_max = 300;
@@ -215,7 +224,7 @@ void draw(void)
 	int number = 1;
 	int starting_line = 1;
 	draw_numbers(number, starting_line, D_RIGHT);
-	draw_numbers(-1, -1, D_LEFT);
+	draw_numbers(-1, starting_line, D_LEFT);
 
 	draw_rect(graph_box);
 
@@ -226,19 +235,29 @@ void draw(void)
 
 void draw_numbers(int number, int starting_line, enum DIRECTION direction)
 {
+	if(number > 0)
+	{
+		printf("Drawing positive\n");
+	}
+	else
+	{
+		printf("Drawing negative\n");
+	}
 	int font_size = MIN_FONT_SIZE;
 	int line = starting_line;
 
 	for(int i = MIN_FONT_SIZE; i < MAX_FONT_SIZE; i++)
 	{
-		SPRITE *d_font = load_texture(1, i);
+		SPRITE *d_font = load_texture(i);
 
 		if((d_font->rect.w*2) == spacing)
 		{
 			font_size = i;
 		}
 	}
-	SPRITE *d_font = number > 0 ? load_texture(10, font_size) : load_texture(-10, font_size);
+	SPRITE *d_font = load_texture(font_size);
+	bool is_negative = number > 0 ? true : false;
+	number = number > 0 ? number : -number;
 	int part_size = d_font->rect.w / 10;
 
 	d_font->rect.x = (get_world()->origin.x + origin_offset.x);
@@ -258,11 +277,11 @@ void draw_numbers(int number, int starting_line, enum DIRECTION direction)
 	dest.y = (get_world()->origin.y + origin_offset.y);
 	dest.w = part_size;
 	dest.h = d_font->rect.h;
+	//dest.x+= part_size;
 
-	int divisor = 1000;
-
-	for(int i=1; i < 30; i++)
+	for(int i=1; i < GRAPH_WIDTH; i++)
 	{
+		int divisor = 10;
 		int distance_left = get_number(i, 0);
 		int distance = distance_left;
 		int place = 0;
@@ -271,20 +290,8 @@ void draw_numbers(int number, int starting_line, enum DIRECTION direction)
 
 		dest.x += part_size*distance_left;
 
-		if(!is_on_screen(&dest))
-			continue;
-
-		switch (distance_left) {
-			case 1:
-				divisor = 10;
-				break;
-			case 2:
-				divisor = 10;
-				break;
-			case 3:
-				divisor = 100;
-				break;
-		}
+		//if(!is_on_screen(&dest))
+		//	continue;
 
 		do {
 			place = j % divisor;
@@ -296,10 +303,14 @@ void draw_numbers(int number, int starting_line, enum DIRECTION direction)
 
 			dest.x -= part_size;
 			distance_left--;
-			j = (j / divisor) ? 1 : j / divisor;
-
+			j = (j / divisor) ? j/divisor : 1;
 		} while(distance_left > 0);
-		dest.x += (distance*get_world()->world_dimensions.x);
+		if(is_negative)
+		{
+			SPRITE *s_font = load_sign(font_size);
+			SDL_RenderCopy(renderer, s_font->texture, NULL, &dest);
+		}
+		dest.x += (distance+get_world()->world_dimensions.x);
 	}
 
 }
@@ -365,15 +376,9 @@ void input()
 	{
 		switch (e.type)
 		{
-			case SDL_DOLLARGESTURE:
-
-				break;
 			case SDL_QUIT:
 				quit = true;
 				cleanup();
-				break;
-			case SDL_KEYDOWN:
-
 				break;
 			case SDL_MOUSEBUTTONDOWN:
 
@@ -464,12 +469,12 @@ void input()
 						spacing-=.1;
 					}
 			}
-	case SDL_WINDOWEVENT:
-		update_world(e);
-		// Change graphbox coordinates to new window size
-		init_box();
-		break;
-		}
+			case SDL_WINDOWEVENT:
+				update_world(e);
+				// Change graphbox coordinates to new window size
+				init_box();
+				break;
+			}
 	}
 
 	mouse_event();
