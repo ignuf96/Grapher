@@ -218,31 +218,29 @@ void draw(void)
 	SDL_RenderClear(renderer);
 	SDL_RenderCopy(renderer, background.texture, NULL, NULL);
 
-	// draw numbers
-	int render_max = 300;
-	int lines_to_draw = INT_MAX-1;
-	int number = 1;
-	int starting_line = 1;
-	draw_numbers(number, starting_line, D_RIGHT);
-	draw_numbers(-1, starting_line, D_LEFT);
-
 	draw_rect(graph_box);
 
 	// draw axes()
 	SDL_RenderCopy(renderer, axes_horizontal_line.texture, NULL, &axes_horizontal_line.rect);
 	SDL_RenderCopy(renderer, axes_vertical_line.texture, NULL, &axes_vertical_line.rect);
+
+	// draw numbers
+	int number = 1;
+	int starting_line = 1;
+	draw_numbers(number, starting_line, D_RIGHT);
+	number = -1;
+	starting_line = -1;
+	draw_numbers(number, starting_line, D_LEFT);
+	number = 1;
+	starting_line = 1;
+	draw_numbers(number, starting_line, D_UP);
+	number = -1;
+	starting_line = -1;
+	draw_numbers(number, starting_line, D_DOWN);
 }
 
 void draw_numbers(int number, int starting_line, enum DIRECTION direction)
 {
-	if(number > 0)
-	{
-		printf("Drawing positive\n");
-	}
-	else
-	{
-		printf("Drawing negative\n");
-	}
 	int font_size = MIN_FONT_SIZE;
 	int line = starting_line;
 
@@ -256,7 +254,7 @@ void draw_numbers(int number, int starting_line, enum DIRECTION direction)
 		}
 	}
 	SPRITE *d_font = load_texture(font_size);
-	bool is_negative = number > 0 ? true : false;
+	bool is_negative = direction == D_LEFT || direction == D_DOWN ? true : false;
 	number = number > 0 ? number : -number;
 	int part_size = d_font->rect.w / 10;
 
@@ -275,6 +273,31 @@ void draw_numbers(int number, int starting_line, enum DIRECTION direction)
 	SDL_Rect dest;
 	dest.x = (get_world()->origin.x + origin_offset.x);
 	dest.y = (get_world()->origin.y + origin_offset.y);
+
+	// draw zero
+	SDL_Rect zero_part;
+	zero_part.x = 0;
+	zero_part.y = 0;
+	zero_part.w = part_size;
+	zero_part.h = d_font->rect.h;
+	SDL_RenderCopy(renderer, d_font->texture, &zero_part, &dest);
+
+	switch (direction) {
+			case D_LEFT:
+				dest.x += (starting_line * get_world()->world_dimensions.x);
+				break;
+			case D_RIGHT:
+				dest.x += (starting_line * get_world()->world_dimensions.x);
+				break;
+			case D_DOWN:
+				dest.y += -(starting_line * get_world()->world_dimensions.y);
+				break;
+			case D_UP:
+				dest.y += -(starting_line * get_world()->world_dimensions.y);
+				break;
+				case D_NONE:
+					break;
+	}
 	dest.w = part_size;
 	dest.h = d_font->rect.h;
 	//dest.x+= part_size;
@@ -288,20 +311,15 @@ void draw_numbers(int number, int starting_line, enum DIRECTION direction)
 		int j=i;
 		SDL_Rect dest_num = dest;
 
-		dest.x += part_size*distance_left;
-
-		//if(!is_on_screen(&dest))
-		//	continue;
+		dest.x += direction == D_LEFT || direction == D_DOWN ? (part_size*distance_left) : part_size*distance_left;
 
 		do {
 			place = j % divisor;
 			rect_place.x = part_size * place;
 
-			//printf("Running Num: %d\nJ: %d\nPlace: %d\nRect_place.x: %d\nDest.x: %d\n", i, j, place, rect_place.x, dest.x);
-
 			SDL_RenderCopy(renderer, d_font->texture, &rect_place, &dest);
 
-			dest.x -= part_size;
+			dest.x += -part_size;
 			distance_left--;
 			j = (j / divisor) ? j/divisor : 1;
 		} while(distance_left > 0);
@@ -310,9 +328,23 @@ void draw_numbers(int number, int starting_line, enum DIRECTION direction)
 			SPRITE *s_font = load_sign(font_size);
 			SDL_RenderCopy(renderer, s_font->texture, NULL, &dest);
 		}
-		dest.x += (distance+get_world()->world_dimensions.x);
+		switch (direction) {
+			case D_LEFT:
+				dest.x += (distance - get_world()->world_dimensions.x);
+				break;
+			case D_RIGHT:
+				dest.x += (distance + get_world()->world_dimensions.x);
+				break;
+			case D_DOWN:
+				dest.y += (distance + get_world()->world_dimensions.y);
+				break;
+			case D_UP:
+				dest.y += (distance - get_world()->world_dimensions.y);
+				break;
+				case D_NONE:
+					break;
+		}
 	}
-
 }
 
 int get_number(int num, int part_size)
