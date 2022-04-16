@@ -80,8 +80,10 @@ static void draw_mouse_coordinates(int x, int y);
 static int get_number(int num, int part_size);
 static void init_box(void);
 static void get_quadrant_pos(int location, ivec2 *quadrant, ivec2 *distance);
+static void draw_points(void);
 
 SPRITE graph_box;
+SPRITE dot_texture;
 SPRITE background;
 
 #define NUMBER_OF_QUADRANTS 4
@@ -93,6 +95,13 @@ SPRITE background;
 SDL_Rect graph[NUMBER_OF_QUADRANTS][GRAPH_WIDTH][GRAPH_HEIGHT];
 SDL_Rect *graphp = &graph[0][0][0];
 
+struct POINTS {
+	SDL_Rect rect;
+	bool is_visible;
+};
+
+struct POINTS points[NUMBER_OF_QUADRANTS][GRAPH_WIDTH][GRAPH_HEIGHT] = {0, 0};
+
 void initialize(void)
 {
 
@@ -100,8 +109,8 @@ void initialize(void)
 
 	SDL_Init(SDL_INIT_VIDEO);
 
-	window = SDL_CreateWindow(WINDOW_TITLE, WINDOW_POSX, WINDOW_POSY, 1920,
-							  1080, SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_RESIZABLE);
+	window = SDL_CreateWindow(WINDOW_TITLE, WINDOW_POSX, WINDOW_POSY, 1080,
+							  1920, SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_RESIZABLE);
 
 	renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 
@@ -111,13 +120,8 @@ void initialize(void)
 	spacing = starting_spacing;
 	spacing_limit = 10;
 
-	// starting x is -render_distance * 3 fills screen left, middle, and right
-	axes_horizontal_line_width = get_world()->render_distance.x * 3;
-	axes_horizontal_line_height = 1*get_world()->world_dimensions.y;
-	axes_vertical_line_width = 1*get_world()->world_dimensions.x;
-	axes_vertical_line_height = get_world()->render_distance.y * 3;
-
-	create_sprite(&background, "../assets/background.jpg", get_world()->screen_dimensions.y, get_world()->screen_dimensions.y, 0, 0);
+	create_sprite(&background, "../assets/background.png", get_world()->screen_dimensions.y, get_world()->screen_dimensions.y, 0, 0);
+	create_sprite(&dot_texture, "../assets/dot.png", 1000, 1000, 0, 0);
 
 	int buffering;
 	SDL_GL_GetAttribute(SDL_GL_DOUBLEBUFFER, &buffering);
@@ -161,44 +165,10 @@ int main(void)
 	return 0;
 }
 
-#define GRID_AMOUNT 180
-SDL_Rect rect_on_screen[GRID_AMOUNT];
-SDL_Rect *rect_screen = &rect_on_screen[0];
-
 void update(void)
 {
 	coordinate_location.x = origin_offset.x + get_world()->origin.x;
 	coordinate_location.y = origin_offset.y + get_world()->origin.y;
-
-	printf("Origin_offset.x: %d\nOrigin_offset.y: %d\nCoordinateX: %d\nCoordinateY: %d\n",
-		   origin_offset.x, origin_offset.y, coordinate_location.x, coordinate_location.y);
-
-	rect_screen = &rect_on_screen[0];
-	memset(&rect_on_screen, 0, sizeof rect_on_screen);
-	int onscreen = 0;
-	for(int n=0; n < NUMBER_OF_QUADRANTS; n++)
-	{
-		ivec2 quadrant = {get_world()->origin.x, get_world()->origin.y};
-		ivec2 distance = {0, 0};
-
-		get_quadrant_pos(n, &quadrant, &distance);
-
-		for(int i=0, y = quadrant.y; i < GRAPH_HEIGHT; i++, y+=distance.y)
-		{
-			for(int j =0, x = quadrant.x; j < GRAPH_WIDTH; j++, x+=distance.x)
-			{
-				graph[n][i][j].x = x + origin_offset.x;
-				graph[n][i][j].y = y + origin_offset.y;
-
-				if(is_on_screen(&graph[n][i][j]))
-				{
-					*rect_screen = graph[n][i][j];
-					rect_screen++;
-					onscreen++;
-				}
-			}
-		}
-	}
 
 	axes_vertical_line.rect.x = coordinate_location.x;
 	axes_horizontal_line.rect.y = coordinate_location.y;
@@ -207,8 +177,49 @@ void update(void)
 
 void draw_rect(SPRITE sprite)
 {
-	for(int i=0; i < GRID_AMOUNT; i++)
-		SDL_RenderCopy(renderer, graph_box.texture, NULL, &rect_on_screen[i]);
+	for(int n=0; n < NUMBER_OF_QUADRANTS; n++)
+	{
+		ivec2 quadrant = {get_world()->origin.x, get_world()->origin.y};
+		ivec2 distance = {0, 0};
+		get_quadrant_pos(n, &quadrant, &distance);
+
+		for(int i=0, y = quadrant.y; i < GRAPH_HEIGHT; i++, y+=distance.y)
+		{
+			for(int j =0, x = quadrant.x; j < GRAPH_WIDTH; j++, x+=distance.x)
+			{
+				// This part is actually updating(it's here to avoid using another loop)
+				graph[n][i][j].x = x + origin_offset.x;
+				graph[n][i][j].y = y + origin_offset.y;
+
+				// This part is drawing
+				SDL_RenderCopy(renderer, graph_box.texture, NULL, &graph[n][i][j]);
+			}
+		}
+	}
+}
+
+void draw_points(void)
+{
+for(int n=0; n < NUMBER_OF_QUADRANTS; n++)
+	{
+		ivec2 quadrant = {get_world()->origin.x, get_world()->origin.y};
+		ivec2 distance = {0, 0};
+		get_quadrant_pos(n, &quadrant, &distance);
+
+		for(int i=0, y = quadrant.y; i < GRAPH_HEIGHT; i++, y+=distance.y)
+		{
+			for(int j =0, x = quadrant.x; j < GRAPH_WIDTH; j++, x+=distance.x)
+			{
+				// This part is actually updating(it's here to avoid using another loop)
+				points[n][i][j].rect.x = x + origin_offset.x - points[n][i][j].rect.w/2;
+				points[n][i][j].rect.y = y + origin_offset.y - points[n][i][j].rect.h/2;
+
+				// This part is drawing
+				if(points[n][i][j].is_visible)
+					SDL_RenderCopy(renderer, dot_texture.texture, NULL, &points[n][i][j].rect);
+			}
+		}
+	}
 }
 
 void draw(void)
@@ -218,12 +229,12 @@ void draw(void)
 	SDL_RenderClear(renderer);
 	SDL_RenderCopy(renderer, background.texture, NULL, NULL);
 
-	draw_rect(graph_box);
 
+	draw_rect(graph_box);
 	// draw axes()
 	SDL_RenderCopy(renderer, axes_horizontal_line.texture, NULL, &axes_horizontal_line.rect);
 	SDL_RenderCopy(renderer, axes_vertical_line.texture, NULL, &axes_vertical_line.rect);
-
+	draw_points();
 	// draw numbers
 	int number = 1;
 	int starting_line = 1;
@@ -381,22 +392,29 @@ void mouse_event()
 			first_click_x = mouse_raw.x;
 			first_click_y = mouse_raw.y;
 
-			printf("Clicked at\nx: %d\ny: %d\n", ((((mouse_raw.x-get_world()->origin.x+origin_offset.x))/get_world()->world_dimensions.x)),
-			   -(((mouse_raw.y)/get_world()->world_dimensions.y)-((origin_offset.y+get_world()->origin.y+axes_horizontal_line_height)/get_world()->world_dimensions.y)));
+			SDL_Point point = { mouse_raw.x, mouse_raw.y } ;
 
-		//	int temp_x = origin.x+origin_offset.x;
-			//int temp_y = origin.y+origin_offset.y;
-			//conv_ivec(&temp_x, &temp_y);
-			//printf("Clicked at\nx: %d\ny: %d\n", (x)-temp_x,
-				//   ((-y)-(((origin.y+origin_offset.y))/pixel_height)));
+			for(int n=0; n < NUMBER_OF_QUADRANTS; n++)
+				{
+					ivec2 quadrant = {get_world()->origin.x, get_world()->origin.y};
+					ivec2 distance = {0, 0};
 
-		}
+					get_quadrant_pos(n, &quadrant, &distance);
+
+					for(int i=0, y = quadrant.y; i < GRAPH_HEIGHT; i++, y+=distance.y)
+					{
+						for(int j =0, x = quadrant.x; j < GRAPH_WIDTH; j++, x+=distance.x)
+						{
+							if(SDL_PointInRect(&point, &points[n][i][j].rect))
+								points[n][i][j].is_visible = true;
+						}
+					}
+				}
+			}
 		// We get the difference between the coordinates from when
 		// the user first clicks the mouse and while they are moving the mouse
 		origin_offset.x += (((first_click_x - mouse_raw.x)) / mouse_speed.x);
 		origin_offset.y += (((first_click_y - mouse_raw.y)) / mouse_speed.y);
-
-		//printf("Moving X by: %d\nMoving Y by: %d\n", origin_offset.x, origin_offset.y);
 	}
 }
 
@@ -519,12 +537,24 @@ void init_box()
 	spacing = starting_spacing;
 	spacing_limit = 10;
 
+	// Currently a bug. I think the conversion to world units is returning zero at a certain point in vertical orientation
+	// and makes vertical and horizontal line disappear
 	// starting x is -render_distance * 3 fills screen left, middle, and right
-	axes_horizontal_line_width = get_world()->render_distance.x * 3;
-	axes_horizontal_line_height = 1*get_world()->world_dimensions.y;
+	if(get_world()->screen_dimensions.x > get_world()->screen_dimensions.y)
+	{
+		axes_horizontal_line_width = get_world()->render_distance.x * 3;
+		axes_horizontal_line_height = 1*get_world()->world_dimensions.y;
 
-	axes_vertical_line_width = 1*get_world()->world_dimensions.x;
-	axes_vertical_line_height = get_world()->render_distance.y * 3;
+		axes_vertical_line_width = 1*get_world()->world_dimensions.x;
+		axes_vertical_line_height = get_world()->render_distance.y * 3;
+	} else
+	{
+		axes_horizontal_line_width = get_world()->render_distance.x * 1;
+		axes_horizontal_line_height = 3*get_world()->world_dimensions.y;
+
+		axes_vertical_line_width = 3*get_world()->world_dimensions.x;
+		axes_vertical_line_height = get_world()->render_distance.y * 1;
+	}
 
 	// Cleanup past textures
 	if(axes_horizontal_line.texture)
@@ -548,7 +578,6 @@ void init_box()
 
 		get_quadrant_pos(n, &quadrant, &distance);
 
-
 		for(int i=0, y = quadrant.y; i < GRAPH_HEIGHT; i++, y+=distance.y)
 		{
 			for(int j =0, x = quadrant.x; j < GRAPH_WIDTH; j++, x+=distance.x)
@@ -558,6 +587,25 @@ void init_box()
 				graph[n][i][j].y = y+origin_offset.y;
 				graph[n][i][j].w = 1*get_world()->world_dimensions.x;
 				graph[n][i][j].h = 1*get_world()->world_dimensions.y;
+
+				switch (n) {
+					case 0:
+						points[n][i][j].rect.w = 10;
+						points[n][i][j].rect.h = 10;
+						break;
+					case 1:
+						points[n][i][j].rect.w = 10;
+						points[n][i][j].rect.h = 10;
+						break;
+					case 2:
+						points[n][i][j].rect.w = 10;
+						points[n][i][j].rect.h = 10;
+						break;
+					case 3:
+						points[n][i][j].rect.w = 10;
+						points[n][i][j].rect.h = 10;
+						break;
+				}
 			}
 		}
 	}
