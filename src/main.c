@@ -26,6 +26,9 @@
 #include "../include/datatypes.h"
 #include "../include/world.h"
 
+// GUI stuff
+#include "kiss_sdl.h"
+
 // Window information for initialization
 #define WINDOW_TITLE "Grapher"
 #define WINDOW_POSX SDL_WINDOWPOS_UNDEFINED
@@ -65,6 +68,7 @@ static char str_buffer[100 - 1];
 static char str_num_buffer[MAX_STR_BUFFER];
 
 static bool quit = false;
+int kissquit = 0;
 
 // declarations
 static void initialize(void);
@@ -81,6 +85,15 @@ static int get_number(int num, int part_size);
 static void init_box(void);
 static void get_quadrant_pos(int location, ivec2 *quadrant, ivec2 *distance);
 static void draw_points(void);
+
+void button_event(kiss_button *button, SDL_Event *e, int *draw, int *kissquit)
+{
+	if(kiss_button_event(button, e, draw))
+	{
+		*kissquit = 1;
+		quit = true;
+	}
+}
 
 SPRITE graph_box;
 SPRITE dot_texture;
@@ -101,6 +114,20 @@ struct POINTS {
 	ivec2 pos;
 };
 
+kiss_array objects, a1;
+kiss_window kisswindow;
+kiss_button button = {0};
+kiss_label label = {0};
+
+kiss_entry entry = {0};
+int entry_width = 250;
+kiss_textbox textbox = {0};
+int textbox_width = 250;
+int textbox_height = 250;
+
+char message[KISS_MAX_LENGTH];
+int kissdraw;
+
 struct POINTS points[NUMBER_OF_QUADRANTS][GRAPH_WIDTH][GRAPH_HEIGHT] = {0, 0, 0};
 
 void initialize(void)
@@ -113,7 +140,31 @@ void initialize(void)
 	window = SDL_CreateWindow(WINDOW_TITLE, WINDOW_POSX, WINDOW_POSY, 1080,
 							  1920, SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_RESIZABLE);
 
-	renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+	//renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+
+kissdraw = 1;
+kiss_array_new(&objects);
+
+//kiss_array_new(&a1);
+//kiss_array_append(&objects, ARRAY_TYPE, &a1);
+
+renderer = kiss_init("Hello kiss_sdl", &objects, 1920, 1080);
+kiss_window_new(&kisswindow, NULL, 0, 0, 0, kiss_screen_width, kiss_screen_height);
+strcpy(message, "Quit!");
+kiss_label_new(&label, &kisswindow, message,
+			   strlen(message)*kiss_textfont.advance/2,
+			   (kiss_textfont.fontheight +
+2*kiss_normal.h) /2);
+label.textcolor.r = 255;
+kiss_button_new(&button, &kisswindow, "OK",
+kiss_normal.w/2, label.rect.y +
+kiss_textfont.fontheight + kiss_normal.h);
+kisswindow.visible = 1;
+
+kiss_entry_new(&entry, &kisswindow, 1, "", 0, 0, 250-1);
+//kiss_textbox_new(&textbox, &kisswindow, 1, &a1, 300, 0, textbox_width, textbox_height);
+
+
 
 	init_world(window);
 
@@ -131,7 +182,7 @@ void initialize(void)
 	init_box();
 }
 
-int main(void)
+int main(int argc, char **argv)
 {
 	initialize();
 	// ADAPTIVE SYNC (-1) IMMEDIATE(0)
@@ -249,6 +300,13 @@ void draw(void)
 	number = -1;
 	starting_line = -1;
 	draw_numbers(number, starting_line, D_DOWN);
+
+	//kiss_window_draw(&kisswindow, renderer);
+	kiss_label_draw(&label, renderer);
+	kiss_button_draw(&button, renderer);
+	kiss_entry_draw(&entry, renderer);
+	//kiss_textbox_draw(&textbox, renderer);
+	kissdraw = 0;
 }
 
 void draw_numbers(int number, int starting_line, enum DIRECTION direction)
@@ -439,10 +497,19 @@ void input()
 
 	while (SDL_PollEvent(&e))
 	{
+		//printf("Checking input\n");
+		kiss_window_event(&kisswindow, &e, &kissdraw);
+		kiss_entry_event(&entry, &e, &kissdraw);
+		button_event(&button, &e, &kissdraw, &kissquit);
+		//textbox2_event(&textbox, &e, &entry,
+			//	&kissdraw);
 		switch (e.type)
 		{
 			case SDL_QUIT:
+				printf("Quiting\n\n\n");
 				quit = true;
+				kissquit = 1;
+				kiss_clean(&objects);
 				cleanup();
 				break;
 			case SDL_MOUSEBUTTONDOWN:
