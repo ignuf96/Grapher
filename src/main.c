@@ -98,9 +98,10 @@ SDL_Rect *graphp = &graph[0][0][0];
 struct POINTS {
 	SDL_Rect rect;
 	bool is_visible;
+	ivec2 pos;
 };
 
-struct POINTS points[NUMBER_OF_QUADRANTS][GRAPH_WIDTH][GRAPH_HEIGHT] = {0, 0};
+struct POINTS points[NUMBER_OF_QUADRANTS][GRAPH_WIDTH][GRAPH_HEIGHT] = {0, 0, 0};
 
 void initialize(void)
 {
@@ -406,7 +407,15 @@ void mouse_event()
 						for(int j =0, x = quadrant.x; j < GRAPH_WIDTH; j++, x+=distance.x)
 						{
 							if(SDL_PointInRect(&point, &points[n][i][j].rect))
-								points[n][i][j].is_visible = true;
+							{
+								if(!points[n][i][j].is_visible)
+								{
+									points[n][i][j].is_visible = true;
+								} else {
+									points[n][i][j].is_visible = false;
+								}
+								printf("Clicked on:\nX: %d\nY: %d\n", points[n][i][j].pos.x, points[n][i][j].pos.y);
+							}
 						}
 					}
 				}
@@ -590,20 +599,32 @@ void init_box()
 
 				switch (n) {
 					case 0:
-						points[n][i][j].rect.w = 10;
-						points[n][i][j].rect.h = 10;
+						points[n][i][j].pos.x = j;
+						points[n][i][j].pos.y = i+1;
+
+						points[n][i][j].rect.w = 15;
+						points[n][i][j].rect.h = 15;
 						break;
 					case 1:
-						points[n][i][j].rect.w = 10;
-						points[n][i][j].rect.h = 10;
+						points[n][i][j].pos.x = -j-1;
+						points[n][i][j].pos.y = i+1;
+
+						points[n][i][j].rect.w = 15;
+						points[n][i][j].rect.h = 15;
 						break;
 					case 2:
-						points[n][i][j].rect.w = 10;
-						points[n][i][j].rect.h = 10;
+						points[n][i][j].pos.x = -j-1;
+						points[n][i][j].pos.y = -i;
+
+						points[n][i][j].rect.w = 15;
+						points[n][i][j].rect.h = 15;
 						break;
 					case 3:
-						points[n][i][j].rect.w = 10;
-						points[n][i][j].rect.h = 10;
+						points[n][i][j].pos.x = j;
+						points[n][i][j].pos.y = -i;
+
+						points[n][i][j].rect.w = 15;
+						points[n][i][j].rect.h = 15;
 						break;
 				}
 			}
