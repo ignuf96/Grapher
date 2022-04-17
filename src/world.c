@@ -15,8 +15,17 @@ void init_world(SDL_Window *window)
     window_rect.h = world.screen_dimensions.y;
     window_rect.x = 0;
     window_rect.y = 0;
-    world.ASPECT_RATIO.x = 16;
-    world.ASPECT_RATIO.y = 9;
+
+    // Check if we are in landscape or portrait and adjust aspect ratio accordingly
+    if(world.screen_dimensions.x > world.screen_dimensions.y)
+    {
+        world.ASPECT_RATIO.x = 16;
+        world.ASPECT_RATIO.y = 9;
+    } else {
+        world.ASPECT_RATIO.x = 9;
+        world.ASPECT_RATIO.y = 16;
+    }
+
     world.world_dimensions.x = world.screen_dimensions.x/world.ASPECT_RATIO.x;
     world.world_dimensions.y = world.screen_dimensions.y/world.ASPECT_RATIO.y;
 
@@ -44,6 +53,16 @@ void update_world(SDL_Event event)
                     // Change line coordinates to new window size
                     world.screen_dimensions.x = event.window.data1;
                     world.screen_dimensions.y = event.window.data2;
+
+                    // Check if we are in landscape or portrait and adjust aspect ratio accordingly
+                    if(world.screen_dimensions.x > world.screen_dimensions.y)
+                    {
+                        world.ASPECT_RATIO.x = 16;
+                        world.ASPECT_RATIO.y = 9;
+                    } else {
+                        world.ASPECT_RATIO.x = 9;
+                        world.ASPECT_RATIO.y = 16;
+                    }
 
                     printf("Height: %d\nWidth: %d\n", event.window.data2, event.window.data1);
 

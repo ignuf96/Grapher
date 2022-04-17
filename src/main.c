@@ -406,7 +406,13 @@ void mouse_event()
 					{
 						for(int j =0, x = quadrant.x; j < GRAPH_WIDTH; j++, x+=distance.x)
 						{
-							if(SDL_PointInRect(&point, &points[n][i][j].rect))
+							SDL_Rect temp_rect = points[n][i][j].rect;
+							temp_rect.w*=1.5;
+							temp_rect.h*=1.5;
+							//temp_rect.x/=2;
+							//temp_rect.y/=2;
+
+							if(SDL_PointInRect(&point, &temp_rect))
 							{
 								if(!points[n][i][j].is_visible)
 								{
