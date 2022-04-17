@@ -9,7 +9,7 @@ A program that graphs linear equations.
  - C99 Compiler
 
 # Libraries
-###Fedora
+### Fedora
 ##### [Requires root]
 
 ### 64-bit
