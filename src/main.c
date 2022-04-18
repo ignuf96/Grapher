@@ -153,19 +153,19 @@ if(!renderer)
 	//window = SDL_CreateWindow(WINDOW_TITLE, WINDOW_POSX, WINDOW_POSY, 1920,
 		//					  1080, SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_RESIZABLE);
 
-	kiss_window_new(&kisswindow, NULL, 0, 0, 0, 1920/6, 1080/6);
-strcpy(message, "Quit!");
+kiss_window_new(&kisswindow, NULL, 0, 0, 0, 1920/6, 1080/12);
+strcpy(message, "Write Your Linear Equation Here");
 kiss_label_new(&label, &kisswindow, message,
-			   strlen(message)*kiss_textfont.advance/2,
+			   0,
 			   (kiss_textfont.fontheight +
 2*kiss_normal.h) /2);
 label.textcolor.r = 255;
-kiss_button_new(&button, &kisswindow, "OK",
-kiss_normal.w/2, label.rect.y +
-kiss_textfont.fontheight + kiss_normal.h);
+//kiss_button_new(&button, &kisswindow, "OK",
+//kiss_normal.w/2, label.rect.y +
+//kiss_textfont.fontheight + kiss_normal.h);
 kisswindow.visible = 1;
 
-kiss_entry_new(&entry, &kisswindow, 1, "", 0, 0, 250-1);
+kiss_entry_new(&entry, &kisswindow, 1, "y=mx+b", 0, 0, 250-1);
 //kiss_textbox_new(&textbox, &kisswindow, 1, &a1, 300, 0, textbox_width, textbox_height);
 
 
@@ -310,9 +310,9 @@ void draw(void)
 
 	kiss_window_draw(&kisswindow, renderer);
 	kiss_label_draw(&label, renderer);
-	kiss_button_draw(&button, renderer);
+	//kiss_button_draw(&button, renderer);
 	kiss_entry_draw(&entry, renderer);
-	kiss_textbox_draw(&textbox, renderer);
+	//kiss_textbox_draw(&textbox, renderer);
 	kissdraw = 0;
 }
 
@@ -630,7 +630,7 @@ void init_box()
 	// Currently a bug. I think the conversion to world units is returning zero at a certain point in vertical orientation
 	// and makes vertical and horizontal line disappear
 	// starting x is -render_distance * 3 fills screen left, middle, and right
-	if(get_world()->screen_dimensions.x > get_world()->screen_dimensions.y)
+	if(get_world()->ASPECT_RATIO.x > get_world()->ASPECT_RATIO.y)
 	{
 		axes_horizontal_line_width = get_world()->render_distance.x * 3;
 		axes_horizontal_line_height = 1*get_world()->world_dimensions.y;
@@ -639,11 +639,11 @@ void init_box()
 		axes_vertical_line_height = get_world()->render_distance.y * 3;
 	} else
 	{
-		axes_horizontal_line_width = get_world()->render_distance.x * 1;
-		axes_horizontal_line_height = 3*get_world()->world_dimensions.y;
+		axes_horizontal_line_width = get_world()->render_distance.x * 2;
+		axes_horizontal_line_height = get_world()->world_dimensions.y * 1;
 
-		axes_vertical_line_width = 3*get_world()->world_dimensions.x;
-		axes_vertical_line_height = get_world()->render_distance.y * 1;
+		axes_vertical_line_width = get_world()->world_dimensions.x * 1;
+		axes_vertical_line_height = get_world()->render_distance.y * 2;
 	}
 
 	// Cleanup past textures
