@@ -27,9 +27,10 @@
 #include "../include/world.h"
 
 // GUI stuff
-#include "kiss_sdl.h"
+#include "../include/kiss_sdl.h"
 
 // Window information for initialization
+SDL_Window *window;
 #define WINDOW_TITLE "Grapher"
 #define WINDOW_POSX SDL_WINDOWPOS_UNDEFINED
 #define WINDOW_POSY SDL_WINDOWPOS_UNDEFINED
@@ -37,7 +38,6 @@
 // dimensions 16:9
 static int axes_horizontal_line_width, axes_horizontal_line_height;
 static int axes_vertical_line_width, axes_vertical_line_height;
-static SDL_Window *window;
 static SDL_Renderer *renderer;
 static SDL_Event e;
 
@@ -133,12 +133,8 @@ struct POINTS points[NUMBER_OF_QUADRANTS][GRAPH_WIDTH][GRAPH_HEIGHT] = {0, 0, 0}
 void initialize(void)
 {
 
-	printf("Iniitializing\n\n");
 
-	SDL_Init(SDL_INIT_VIDEO);
-
-	window = SDL_CreateWindow(WINDOW_TITLE, WINDOW_POSX, WINDOW_POSY, 1080,
-							  1920, SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_RESIZABLE);
+	//SDL_Init(SDL_INIT_VIDEO);
 
 	//renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 
@@ -148,8 +144,16 @@ kiss_array_new(&objects);
 //kiss_array_new(&a1);
 //kiss_array_append(&objects, ARRAY_TYPE, &a1);
 
-renderer = kiss_init("Hello kiss_sdl", &objects, 1920, 1080);
-kiss_window_new(&kisswindow, NULL, 0, 0, 0, kiss_screen_width, kiss_screen_height);
+printf("Iniitializing\n\n");
+renderer = kiss_init(&window, "Hello kiss_sdl", &objects, 1920, 1080);
+if(!renderer)
+{
+	printf("Renderer messed up!!!\n");
+}
+	//window = SDL_CreateWindow(WINDOW_TITLE, WINDOW_POSX, WINDOW_POSY, 1920,
+		//					  1080, SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_RESIZABLE);
+
+	kiss_window_new(&kisswindow, NULL, 0, 0, 0, 1920/6, 1080/6);
 strcpy(message, "Quit!");
 kiss_label_new(&label, &kisswindow, message,
 			   strlen(message)*kiss_textfont.advance/2,
@@ -165,7 +169,10 @@ kiss_entry_new(&entry, &kisswindow, 1, "", 0, 0, 250-1);
 //kiss_textbox_new(&textbox, &kisswindow, 1, &a1, 300, 0, textbox_width, textbox_height);
 
 
-
+if(!window)
+{
+	printf("This window isn't initialized\n");
+}
 	init_world(window);
 
 	starting_spacing = .1f;
@@ -301,11 +308,11 @@ void draw(void)
 	starting_line = -1;
 	draw_numbers(number, starting_line, D_DOWN);
 
-	//kiss_window_draw(&kisswindow, renderer);
+	kiss_window_draw(&kisswindow, renderer);
 	kiss_label_draw(&label, renderer);
 	kiss_button_draw(&button, renderer);
 	kiss_entry_draw(&entry, renderer);
-	//kiss_textbox_draw(&textbox, renderer);
+	kiss_textbox_draw(&textbox, renderer);
 	kissdraw = 0;
 }
 
@@ -498,9 +505,7 @@ void input()
 	while (SDL_PollEvent(&e))
 	{
 		//printf("Checking input\n");
-		kiss_window_event(&kisswindow, &e, &kissdraw);
-		kiss_entry_event(&entry, &e, &kissdraw);
-		button_event(&button, &e, &kissdraw, &kissquit);
+
 		//textbox2_event(&textbox, &e, &entry,
 			//	&kissdraw);
 		switch (e.type)
@@ -606,7 +611,10 @@ void input()
 				// Change graphbox coordinates to new window size
 				init_box();
 				break;
-			}
+		}
+		kiss_window_event(&kisswindow, &e, &kissdraw);
+		kiss_entry_event(&entry, &e, &kissdraw);
+		button_event(&button, &e, &kissdraw, &kissquit);
 	}
 
 	mouse_event();

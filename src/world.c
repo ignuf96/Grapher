@@ -16,6 +16,8 @@ void init_world(SDL_Window *window)
     window_rect.x = 0;
     window_rect.y = 0;
 
+    printf("World dimensions\nw: %d\nh: %d\nx: %d\ny: %d\n", window_rect.w, window_rect.h, window_rect.x, window_rect.y);
+
     // Check if we are in landscape or portrait and adjust aspect ratio accordingly
     if(world.screen_dimensions.x > world.screen_dimensions.y)
     {

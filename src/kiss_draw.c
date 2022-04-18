@@ -22,7 +22,8 @@
   kiss_sdl version 1.2.4
 */
 
-#include "kiss_sdl.h"
+#include "../include/kiss_sdl.h"
+#include <SDL2/SDL_video.h>
 
 kiss_font kiss_textfont, kiss_buttonfont;
 kiss_image kiss_normal, kiss_prelight, kiss_active, kiss_bar,
@@ -170,9 +171,8 @@ int kiss_font_new(kiss_font *font, char *fname, kiss_array *a, int size)
 	return 0;
 }
 
-SDL_Renderer* kiss_init(char* title, kiss_array *a, int w, int h)
+SDL_Renderer* kiss_init(SDL_Window **window, char* title, kiss_array *a, int w, int h)
 {
-	SDL_Window *window;
 	SDL_Renderer *renderer;
 	SDL_Rect srect;
 	int r;
@@ -189,29 +189,30 @@ SDL_Renderer* kiss_init(char* title, kiss_array *a, int w, int h)
 	IMG_Init(IMG_INIT_PNG);
 	TTF_Init();
 	kiss_array_new(a);
-	window = SDL_CreateWindow(title, srect.w / 2 - w / 2,
-		srect.h / 2 - h / 2, w, h, SDL_WINDOW_SHOWN);
+	*window = SDL_CreateWindow(title, srect.w / 2 - w / 2,
+		srect.h / 2 - h / 2, w, h, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
 	if (window) kiss_array_append(a, WINDOW_TYPE, window);
-	renderer = SDL_CreateRenderer(window, -1,
+	else printf("Window couldn't be created\n");
+	renderer = SDL_CreateRenderer(*window, -1,
 		SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 	if (renderer) kiss_array_append(a, RENDERER_TYPE, renderer);
-	r += kiss_font_new(&kiss_textfont, "kiss_font.ttf", a,
+	r += kiss_font_new(&kiss_textfont, "../assets/fonts/kiss_font.ttf", a,
 		kiss_textfont_size);
-	r += kiss_font_new(&kiss_buttonfont, "kiss_font.ttf", a,
+	r += kiss_font_new(&kiss_buttonfont, "../assets/fonts/kiss_font.ttf", a,
 		kiss_buttonfont_size);
-	r += kiss_image_new(&kiss_normal, "kiss_normal.png", a, renderer);
-	r += kiss_image_new(&kiss_prelight, "kiss_prelight.png", a, renderer);
-	r += kiss_image_new(&kiss_active, "kiss_active.png", a, renderer);
-	r += kiss_image_new(&kiss_bar, "kiss_bar.png", a, renderer);
-	r += kiss_image_new(&kiss_vslider, "kiss_vslider.png", a, renderer);
-	r += kiss_image_new(&kiss_hslider, "kiss_hslider.png", a, renderer);
-	r += kiss_image_new(&kiss_up, "kiss_up.png", a, renderer);
-	r += kiss_image_new(&kiss_down, "kiss_down.png", a, renderer);
-	r += kiss_image_new(&kiss_left, "kiss_left.png", a, renderer);
-	r += kiss_image_new(&kiss_right, "kiss_right.png", a, renderer);
-	r += kiss_image_new(&kiss_combo, "kiss_combo.png", a, renderer);
-	r += kiss_image_new(&kiss_selected, "kiss_selected.png", a, renderer);
-	r += kiss_image_new(&kiss_unselected, "kiss_unselected.png", a,
+	r += kiss_image_new(&kiss_normal, "../assets/kiss_normal.png", a, renderer);
+	r += kiss_image_new(&kiss_prelight, "../assets/kiss_prelight.png", a, renderer);
+	r += kiss_image_new(&kiss_active, "../assets/kiss_active.png", a, renderer);
+	r += kiss_image_new(&kiss_bar, "../assets/kiss_bar.png", a, renderer);
+	r += kiss_image_new(&kiss_vslider, "../assets/kiss_vslider.png", a, renderer);
+	r += kiss_image_new(&kiss_hslider, "../assets/kiss_hslider.png", a, renderer);
+	r += kiss_image_new(&kiss_up, "../assets/kiss_up.png", a, renderer);
+	r += kiss_image_new(&kiss_down, "../assets/kiss_down.png", a, renderer);
+	r += kiss_image_new(&kiss_left, "../assets/kiss_left.png", a, renderer);
+	r += kiss_image_new(&kiss_right, "../assets/kiss_right.png", a, renderer);
+	r += kiss_image_new(&kiss_combo, "../assets/kiss_combo.png", a, renderer);
+	r += kiss_image_new(&kiss_selected, "../assets/kiss_selected.png", a, renderer);
+	r += kiss_image_new(&kiss_unselected, "../assets/kiss_unselected.png", a,
 		renderer);
 	if (r) {
 		kiss_clean(a);
