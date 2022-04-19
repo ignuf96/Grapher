@@ -54,7 +54,7 @@ float starting_spacing;
 float spacing_limit;
 
 static float fps;
-static const float FPS_TARGET = 60.0f;
+static const float FPS_TARGET = 240.0f;
 
 static SPRITE axes_horizontal_line;
 static SPRITE axes_vertical_line;
@@ -97,6 +97,7 @@ void button_event(kiss_button *button, SDL_Event *e, int *draw, int *kissquit)
 
 SPRITE graph_box;
 SPRITE dot_texture;
+SPRITE highlighted_dot_texture;
 SPRITE background;
 
 #define NUMBER_OF_QUADRANTS 4
@@ -107,10 +108,12 @@ SPRITE background;
 
 SDL_Rect graph[NUMBER_OF_QUADRANTS][GRAPH_WIDTH][GRAPH_HEIGHT];
 SDL_Rect *graphp = &graph[0][0][0];
+SDL_Rect graph_size = {0, 0, 0, 0};
 
 struct POINTS {
 	SDL_Rect rect;
 	bool is_visible;
+	bool is_highlighted;
 	ivec2 pos;
 };
 
@@ -132,55 +135,35 @@ struct POINTS points[NUMBER_OF_QUADRANTS][GRAPH_WIDTH][GRAPH_HEIGHT] = {0, 0, 0}
 
 void initialize(void)
 {
+	printf("Iniitializing\n\n");
+	SDL_Init(SDL_INIT_EVERYTHING);
+	window = SDL_CreateWindow(WINDOW_TITLE, WINDOW_POSX, WINDOW_POSY, 1920,
+							  1080, SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_RESIZABLE);
+	renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 
+	kissdraw = 1;
+	kiss_array_new(&objects);
 
-	//SDL_Init(SDL_INIT_VIDEO);
+	kiss_init(window, renderer, &objects, 1920, 1080);
 
-	//renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+	kiss_window_new(&kisswindow, NULL, 0, 0, 0, 1920/6, 1080/12);
+	strcpy(message, "Write Your Linear Equation Here");
+	kiss_label_new(&label, &kisswindow, message, 0,
+					(kiss_textfont.fontheight + 2*kiss_normal.h) /2);
 
-kissdraw = 1;
-kiss_array_new(&objects);
+	label.textcolor.r = 255;
+	kisswindow.visible = 1;
+	kiss_entry_new(&entry, &kisswindow, 1, "y=mx+b", 0, 0, 250-1);
 
-//kiss_array_new(&a1);
-//kiss_array_append(&objects, ARRAY_TYPE, &a1);
-
-printf("Iniitializing\n\n");
-renderer = kiss_init(&window, "Hello kiss_sdl", &objects, 1920, 1080);
-if(!renderer)
-{
-	printf("Renderer messed up!!!\n");
-}
-	//window = SDL_CreateWindow(WINDOW_TITLE, WINDOW_POSX, WINDOW_POSY, 1920,
-		//					  1080, SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_RESIZABLE);
-
-kiss_window_new(&kisswindow, NULL, 0, 0, 0, 1920/6, 1080/12);
-strcpy(message, "Write Your Linear Equation Here");
-kiss_label_new(&label, &kisswindow, message,
-			   0,
-			   (kiss_textfont.fontheight +
-2*kiss_normal.h) /2);
-label.textcolor.r = 255;
-//kiss_button_new(&button, &kisswindow, "OK",
-//kiss_normal.w/2, label.rect.y +
-//kiss_textfont.fontheight + kiss_normal.h);
-kisswindow.visible = 1;
-
-kiss_entry_new(&entry, &kisswindow, 1, "y=mx+b", 0, 0, 250-1);
-//kiss_textbox_new(&textbox, &kisswindow, 1, &a1, 300, 0, textbox_width, textbox_height);
-
-
-if(!window)
-{
-	printf("This window isn't initialized\n");
-}
 	init_world(window);
 
 	starting_spacing = .1f;
 	spacing = starting_spacing;
-	spacing_limit = 10;
+	spacing_limit = 300;
 
 	create_sprite(&background, "../assets/background.png", get_world()->screen_dimensions.y, get_world()->screen_dimensions.y, 0, 0);
 	create_sprite(&dot_texture, "../assets/dot.png", 1000, 1000, 0, 0);
+	create_sprite(&highlighted_dot_texture, "../assets/highlighteddot.png", 1000, 1000, 0, 0);
 
 	int buffering;
 	SDL_GL_GetAttribute(SDL_GL_DOUBLEBUFFER, &buffering);
@@ -195,7 +178,7 @@ int main(int argc, char **argv)
 	// ADAPTIVE SYNC (-1) IMMEDIATE(0)
 	SDL_GL_SetSwapInterval(1);
 
-	Uint32 time_step_ms = 1000 / 60;
+	Uint32 time_step_ms = 1000 / 240;
 	Uint32 next_game_step = SDL_GetTicks();
 
 	while (!quit)
@@ -204,7 +187,7 @@ int main(int argc, char **argv)
 
 		if(next_game_step <= now)
 		{
-			int computer_is_too_slow_limit = 30;
+			int computer_is_too_slow_limit = 35;
 
 			while((next_game_step <= now) && (computer_is_too_slow_limit--))
 			{
@@ -233,7 +216,6 @@ void update(void)
 	axes_horizontal_line.rect.y = coordinate_location.y;
 }
 
-
 void draw_rect(SPRITE sprite)
 {
 	for(int n=0; n < NUMBER_OF_QUADRANTS; n++)
@@ -247,8 +229,8 @@ void draw_rect(SPRITE sprite)
 			for(int j =0, x = quadrant.x; j < GRAPH_WIDTH; j++, x+=distance.x)
 			{
 				// This part is actually updating(it's here to avoid using another loop)
-				graph[n][i][j].x = x + origin_offset.x;
-				graph[n][i][j].y = y + origin_offset.y;
+				graph[n][i][j].x = x + origin_offset.x+graph_size.x;
+				graph[n][i][j].y = y + origin_offset.y+graph_size.y;
 
 				// This part is drawing
 				SDL_RenderCopy(renderer, graph_box.texture, NULL, &graph[n][i][j]);
@@ -274,8 +256,14 @@ for(int n=0; n < NUMBER_OF_QUADRANTS; n++)
 				points[n][i][j].rect.y = y + origin_offset.y - points[n][i][j].rect.h/2;
 
 				// This part is drawing
-				if(points[n][i][j].is_visible)
+				if(points[n][i][j].is_visible && !points[n][i][j].is_highlighted)
+				{
 					SDL_RenderCopy(renderer, dot_texture.texture, NULL, &points[n][i][j].rect);
+				}
+				else if(points[n][i][j].is_visible && points[n][i][j].is_highlighted)
+				{
+					SDL_RenderCopy(renderer, highlighted_dot_texture.texture, NULL, &points[n][i][j].rect);
+				}
 			}
 		}
 	}
@@ -361,7 +349,7 @@ void draw_numbers(int number, int starting_line, enum DIRECTION direction)
 
 	switch (direction) {
 			case D_LEFT:
-				dest.x += (starting_line * get_world()->world_dimensions.x);
+				dest.x += -(graph[0][0][0].w);
 				break;
 			case D_RIGHT:
 				dest.x += (starting_line * get_world()->world_dimensions.x);
@@ -383,6 +371,7 @@ void draw_numbers(int number, int starting_line, enum DIRECTION direction)
 	{
 		int divisor = 10;
 		int distance_left = get_number(i, 0);
+
 		int distance = distance_left;
 		int place = 0;
 		int j=i;
@@ -440,6 +429,8 @@ int first_click_x = 0;
 int first_click_y = 0;
 Uint32 buttons;
 bool left_mousedown = false;
+bool double_click = false;
+bool single_click = false;
 
 void mouse_event()
 {
@@ -479,13 +470,26 @@ void mouse_event()
 
 							if(SDL_PointInRect(&point, &temp_rect))
 							{
-								if(!points[n][i][j].is_visible)
+								if(!points[n][i][j].is_visible && single_click && !double_click && !points[n][i][j].is_highlighted)
 								{
 									points[n][i][j].is_visible = true;
-								} else {
-									points[n][i][j].is_visible = false;
+									//single_click = false;
 								}
-								printf("Clicked on:\nX: %d\nY: %d\n", points[n][i][j].pos.x, points[n][i][j].pos.y);
+								else if(points[n][i][j].is_visible && !points[n][i][j].is_highlighted && single_click && !double_click)
+								{
+									points[n][i][j].is_highlighted = true;
+									//single_click = false;
+								}
+
+								else if(points[n][i][j].is_visible && double_click)
+								{
+									printf("Hello double click\n");
+									points[n][i][j].is_visible = false;
+									points[n][i][j].is_highlighted = false;
+									printf("Removing\n");
+									//double_click = false;
+									printf("Clicked on:\nX: %d\nY: %d\n", points[n][i][j].pos.x, points[n][i][j].pos.y);
+								}
 							}
 						}
 					}
@@ -504,10 +508,6 @@ void input()
 
 	while (SDL_PollEvent(&e))
 	{
-		//printf("Checking input\n");
-
-		//textbox2_event(&textbox, &e, &entry,
-			//	&kissdraw);
 		switch (e.type)
 		{
 			case SDL_QUIT:
@@ -518,15 +518,24 @@ void input()
 				cleanup();
 				break;
 			case SDL_MOUSEBUTTONDOWN:
-
-				SDL_GetMouseState(&mouse_x, &mouse_y);
-				mouse_moved = true;
-				if ((e.type & SDL_BUTTON_LMASK) != 0)
+				if(e.button.clicks == 1)
 				{
-					left_mousedown = true;
-				}
-				if ((buttons & SDL_BUTTON_LMASK) != 0)
+					single_click = true;
+					double_click = false;
+					SDL_GetMouseState(&mouse_x, &mouse_y);
+					mouse_moved = true;
+					if ((e.type & SDL_BUTTON_LMASK) != 0)
+					{
+						left_mousedown = true;
+					}
+					if ((buttons & SDL_BUTTON_LMASK) != 0)
+					{
+					}
+				} else if(e.button.clicks == 2)
 				{
+					double_click = true;
+					printf("double click\n");
+					single_click = false;
 				}
 				break;
 				case SDL_FINGERDOWN:
@@ -543,6 +552,9 @@ void input()
 				first_click_y = 0;
 
 				first_click = false;
+
+				single_click = false;
+				//double_click = false;
 				// }
 				break;
 			case SDL_FINGERUP:
@@ -552,61 +564,7 @@ void input()
 				first_click_y = 0;
 				first_click = false;
 				break;
-			case SDL_MOUSEWHEEL:
-				if (e.wheel.y > 0)
-				{
-					for(int n=0; n < NUMBER_OF_QUADRANTS; n++)
-					{
-
-						int quadrant_x = get_world()->origin.x;
-						int quadrant_y = get_world()->origin.y;
-
-						for(int i=0; i < GRAPH_HEIGHT; i++)
-							{
-								for(int j =0; j < GRAPH_WIDTH; j++)
-								{
-									graph[n][i][j].x-=spacing;
-									graph[n][i][j].y-=spacing;
-
-									graph[n][i][j].w-=spacing;
-									graph[n][i][j].h-=spacing;
-								}
-							}
-					}
-					if (spacing > spacing_limit)
-						spacing = starting_spacing;
-					else
-					{
-						spacing+=.1;
-					}
-				}
-				else if (e.wheel.y < 0)
-				{
-					for(int n=0; n < NUMBER_OF_QUADRANTS; n++)
-					{
-
-						int quadrant_x = get_world()->origin.x;
-						int quadrant_y = get_world()->origin.y;
-
-						for(int i=0; i < GRAPH_HEIGHT; i++)
-						{
-							for(int j =0; j < GRAPH_WIDTH; j++)
-							{
-								graph[n][i][j].w+=spacing;
-								graph[n][i][j].h+=spacing;
-							}
-						}
-					}
-					if (spacing <= starting_spacing)
-					{
-						spacing = spacing_limit;
-					}
-					else
-					{
-						spacing-=.1;
-					}
-			}
-			case SDL_WINDOWEVENT:
+		case SDL_WINDOWEVENT:
 				update_world(e);
 				// Change graphbox coordinates to new window size
 				init_box();

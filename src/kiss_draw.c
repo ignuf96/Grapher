@@ -22,7 +22,13 @@
   kiss_sdl version 1.2.4
 */
 
+/*
+*
+* modified by ignuf96@gmail.com
+*
+*/
 #include "../include/kiss_sdl.h"
+#include <SDL2/SDL_render.h>
 #include <SDL2/SDL_video.h>
 
 kiss_font kiss_textfont, kiss_buttonfont;
@@ -171,30 +177,23 @@ int kiss_font_new(kiss_font *font, char *fname, kiss_array *a, int size)
 	return 0;
 }
 
-SDL_Renderer* kiss_init(SDL_Window **window, char* title, kiss_array *a, int w, int h)
+void kiss_init(SDL_Window *window, SDL_Renderer *renderer, kiss_array *a, int w, int h)
 {
-	SDL_Renderer *renderer;
 	SDL_Rect srect;
 	int r;
 
 	r = 0;
-	SDL_Init(SDL_INIT_EVERYTHING);
 	SDL_GetDisplayBounds(0, &srect);
 	if (!a || w > srect.w || h > srect.h) {
 		SDL_Quit();
-		return NULL;
 	}
 	kiss_screen_width = w;
 	kiss_screen_height = h;
 	IMG_Init(IMG_INIT_PNG);
 	TTF_Init();
 	kiss_array_new(a);
-	*window = SDL_CreateWindow(title, srect.w / 2 - w / 2,
-		srect.h / 2 - h / 2, w, h, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
 	if (window) kiss_array_append(a, WINDOW_TYPE, window);
 	else printf("Window couldn't be created\n");
-	renderer = SDL_CreateRenderer(*window, -1,
-		SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 	if (renderer) kiss_array_append(a, RENDERER_TYPE, renderer);
 	r += kiss_font_new(&kiss_textfont, "../assets/fonts/kiss_font.ttf", a,
 		kiss_textfont_size);
@@ -216,9 +215,7 @@ SDL_Renderer* kiss_init(SDL_Window **window, char* title, kiss_array *a, int w, 
 		renderer);
 	if (r) {
 		kiss_clean(a);
-		return NULL;
 	}
-	return renderer;	
 }
 
 int kiss_clean(kiss_array *a)
