@@ -68,6 +68,7 @@ static char str_buffer[100 - 1];
 static char str_num_buffer[MAX_STR_BUFFER];
 
 static bool quit = false;
+static bool paused = false;
 int kissquit = 0;
 
 // declarations
@@ -144,7 +145,7 @@ void initialize(void)
 	kissdraw = 1;
 	kiss_array_new(&objects);
 
-	kiss_init(window, renderer, &objects, 1920, 1080);
+	kiss_init(window, renderer, &objects);
 
 	kiss_window_new(&kisswindow, NULL, 0, 0, 0, 1920/6, 1080/12);
 	strcpy(message, "Write Your Linear Equation Here");
@@ -183,6 +184,8 @@ int main(int argc, char **argv)
 
 	while (!quit)
 	{
+		while(!paused)
+		{
 		Uint32 now = SDL_GetTicks();
 
 		if(next_game_step <= now)
@@ -201,7 +204,10 @@ int main(int argc, char **argv)
 
 		} else
 			SDL_Delay(next_game_step - now);
-}
+		}
+		input();
+		SDL_Delay(1);
+	}
 	cleanup();
 
 	return 0;
@@ -564,7 +570,17 @@ void input()
 				first_click_y = 0;
 				first_click = false;
 				break;
-		case SDL_WINDOWEVENT:
+			case SDL_WINDOWEVENT:
+				if (e.window.event == SDL_WINDOWEVENT_FOCUS_LOST)
+				{
+					paused = true;
+					printf("Paused\n");
+				} else
+				if (e.window.event == SDL_WINDOWEVENT_FOCUS_GAINED)
+				{
+					paused = false;
+					printf("UnPaused\n");
+				}
 				update_world(e);
 				// Change graphbox coordinates to new window size
 				init_box();

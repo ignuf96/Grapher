@@ -177,18 +177,19 @@ int kiss_font_new(kiss_font *font, char *fname, kiss_array *a, int size)
 	return 0;
 }
 
-void kiss_init(SDL_Window *window, SDL_Renderer *renderer, kiss_array *a, int w, int h)
+void kiss_init(SDL_Window *window, SDL_Renderer *renderer, kiss_array *a)
 {
 	SDL_Rect srect;
 	int r;
 
 	r = 0;
+	// Causes Error on android unfortunately
+	/*
 	SDL_GetDisplayBounds(0, &srect);
 	if (!a || w > srect.w || h > srect.h) {
 		SDL_Quit();
-	}
-	kiss_screen_width = w;
-	kiss_screen_height = h;
+		}*/
+	SDL_GetWindowSize(window, &kiss_screen_width, &kiss_screen_height);
 	IMG_Init(IMG_INIT_PNG);
 	TTF_Init();
 	kiss_array_new(a);
