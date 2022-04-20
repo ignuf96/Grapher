@@ -79,7 +79,7 @@ static void mouse_event(void);
 static void draw(void);
 static void update(void);
 static void draw_coordinates(void);
-static void draw_numbers(int position, int offset, enum DIRECTION direction);
+static void draw_numbers();
 static void create_sprite(SPRITE* sprite, char* path, int width, int height, int x, int y);
 static void draw_mouse_coordinates(int x, int y);
 static int get_number(int num, int part_size);
@@ -147,14 +147,14 @@ void initialize(void)
 
 	kiss_init(window, renderer, &objects);
 
-	kiss_window_new(&kisswindow, NULL, 0, 0, 0, 1920/6, 1080/12);
+	kiss_window_new(&kisswindow, NULL, 0, 0, 0, 300, 50);
 	strcpy(message, "Write Your Linear Equation Here");
 	kiss_label_new(&label, &kisswindow, message, 0,
 					(kiss_textfont.fontheight + 2*kiss_normal.h) /2);
 
-	label.textcolor.r = 255;
+	label.textcolor.r = 166;
 	kisswindow.visible = 1;
-	kiss_entry_new(&entry, &kisswindow, 1, "y=mx+b", 0, 0, 250-1);
+	kiss_entry_new(&entry, &kisswindow, 1, "y=mx+b", 0, 0, 300);
 
 	init_world(window);
 
@@ -291,29 +291,21 @@ void draw(void)
 	// draw numbers
 	int number = 1;
 	int starting_line = 1;
-	draw_numbers(number, starting_line, D_RIGHT);
-	number = -1;
-	starting_line = -1;
-	draw_numbers(number, starting_line, D_LEFT);
-	number = 1;
-	starting_line = 1;
-	draw_numbers(number, starting_line, D_UP);
-	number = -1;
-	starting_line = -1;
-	draw_numbers(number, starting_line, D_DOWN);
+	draw_numbers();
 
 	kiss_window_draw(&kisswindow, renderer);
 	kiss_label_draw(&label, renderer);
 	//kiss_button_draw(&button, renderer);
 	kiss_entry_draw(&entry, renderer);
-	//kiss_textbox_draw(&textbox, renderer);
+	kiss_textbox_draw(&textbox, renderer);
 	kissdraw = 0;
 }
 
-void draw_numbers(int number, int starting_line, enum DIRECTION direction)
+void draw_numbers()
 {
 	int font_size = MIN_FONT_SIZE;
-	int line = starting_line;
+	SPRITE *d_font = load_texture(font_size);
+	//int line = starting_line;
 
 	for(int i = MIN_FONT_SIZE; i < MAX_FONT_SIZE; i++)
 	{
@@ -324,99 +316,111 @@ void draw_numbers(int number, int starting_line, enum DIRECTION direction)
 			font_size = i;
 		}
 	}
-	SPRITE *d_font = load_texture(font_size);
-	bool is_negative = direction == D_LEFT || direction == D_DOWN ? true : false;
-	number = number > 0 ? number : -number;
+
 	int part_size = d_font->rect.w / 10;
-
-	d_font->rect.x = (get_world()->origin.x + origin_offset.x);
-	d_font->rect.y = (get_world()->origin.y + origin_offset.y);
-
-	SDL_Rect rect_place;
-	// This selects a part from the texture
-	// as always, we start counting at 0 - (part_size * number) gives us that number part
-	rect_place.x = part_size*0;
-	rect_place.y = 0;
-	rect_place.w = part_size;
-	rect_place.h = d_font->rect.h;
-
-	// This is the actually coordinate location to be drawn at
-	SDL_Rect dest;
-	dest.x = (get_world()->origin.x + origin_offset.x);
-	dest.y = (get_world()->origin.y + origin_offset.y);
-
-	// draw zero
-	SDL_Rect zero_part;
-	zero_part.x = 0;
-	zero_part.y = 0;
-	zero_part.w = part_size;
-	zero_part.h = d_font->rect.h;
-	SDL_RenderCopy(renderer, d_font->texture, &zero_part, &dest);
-
-	switch (direction) {
-			case D_LEFT:
-				dest.x += -(graph[0][0][0].w);
-				break;
-			case D_RIGHT:
-				dest.x += (starting_line * get_world()->world_dimensions.x);
-				break;
-			case D_DOWN:
-				dest.y += -(starting_line * get_world()->world_dimensions.y);
-				break;
-			case D_UP:
-				dest.y += -(starting_line * get_world()->world_dimensions.y);
-				break;
-				case D_NONE:
-					break;
-	}
-	dest.w = part_size;
-	dest.h = d_font->rect.h;
-	//dest.x+= part_size;
-
-	for(int i=1; i < GRAPH_WIDTH; i++)
+	bool is_negative;
+	#define NUMBER_OF_AXES 4
+	for(int n=0; n < NUMBER_OF_AXES; n++)
 	{
-		int divisor = 10;
-		int distance_left = get_number(i, 0);
+		d_font->rect.x = (get_world()->origin.x + origin_offset.x);
+		d_font->rect.y = (get_world()->origin.y + origin_offset.y);
 
-		int distance = distance_left;
-		int place = 0;
-		int j=i;
-		SDL_Rect dest_num = dest;
+		SDL_Rect rect_place;
+		// This selects a part from the texture
+		// as always, we start counting at 0 - (part_size * number) gives us that number part
+		rect_place.x = part_size*0;
+		rect_place.y = 0;
+		rect_place.w = part_size;
+		rect_place.h = d_font->rect.h;
 
-		dest.x += direction == D_LEFT || direction == D_DOWN ? (part_size*distance_left) : part_size*distance_left;
+		// This is the actually coordinate location to be drawn at
+		SDL_Rect dest;
+		dest.x = (get_world()->origin.x + origin_offset.x);
+		dest.y = (get_world()->origin.y + origin_offset.y);
 
-		do {
-			place = j % divisor;
-			rect_place.x = part_size * place;
+		// draw zero
+		SDL_Rect zero_part;
+		zero_part.x = 0;
+		zero_part.y = 0;
+		zero_part.w = part_size;
+		zero_part.h = d_font->rect.h;
+		SDL_RenderCopy(renderer, d_font->texture, &zero_part, &dest);
 
-			SDL_RenderCopy(renderer, d_font->texture, &rect_place, &dest);
+		dest.w = part_size;
+		dest.h = d_font->rect.h;
 
-			dest.x += -part_size;
-			distance_left--;
-			j = (j / divisor) ? j/divisor : 1;
-		} while(distance_left > 0);
-		if(is_negative)
+		switch(n)
 		{
-			SPRITE *s_font = load_sign(font_size);
-			SDL_RenderCopy(renderer, s_font->texture, NULL, &dest);
+			case 0:
+				direction = D_RIGHT;
+				is_negative = false;
+				dest.x += (get_world()->world_dimensions.x);
+				break;
+			case 1:
+				direction = D_UP;
+				is_negative = false;
+				dest.y += -(get_world()->world_dimensions.y);
+				break;
+			case 2:
+				direction = D_LEFT;
+				is_negative = true;
+				//dest.x += -(graph[0][0][0].w);
+				dest.x += -(get_world()->world_dimensions.x);
+				break;
+			case 3:
+				direction = D_DOWN;
+				is_negative = true;
+				dest.y += (get_world()->world_dimensions.y);
+				break;
 		}
-		switch (direction) {
-			case D_LEFT:
-				dest.x += (distance - get_world()->world_dimensions.x);
-				break;
-			case D_RIGHT:
-				dest.x += (distance + get_world()->world_dimensions.x);
-				break;
-			case D_DOWN:
-				dest.y += (distance + get_world()->world_dimensions.y);
-				break;
-			case D_UP:
-				dest.y += (distance - get_world()->world_dimensions.y);
-				break;
-				case D_NONE:
+
+		for(int i=1; i < GRAPH_WIDTH; i++)
+		{
+			int divisor = 10;
+			int distance_left = get_number(i, 0);
+
+			int distance = distance_left;
+			int place = 0;
+			int j=i;
+			SDL_Rect dest_num = dest;
+
+			dest.x += direction == D_LEFT || direction == D_DOWN ? (part_size*distance_left) : part_size*distance_left;
+
+			do {
+				place = j % divisor;
+				rect_place.x = part_size * place;
+
+				SDL_RenderCopy(renderer, d_font->texture, &rect_place, &dest);
+
+				dest.x += -part_size;
+				distance_left--;
+				j = (j / divisor) ? j/divisor : 1;
+			} while(distance_left > 0);
+			if(is_negative)
+			{
+				SPRITE *s_font = load_sign(font_size);
+				SDL_RenderCopy(renderer, s_font->texture, NULL, &dest);
+			}
+			switch (direction)
+			{
+				case D_LEFT:
+					dest.x += (distance - get_world()->world_dimensions.x);
 					break;
+				case D_RIGHT:
+					dest.x += (distance + get_world()->world_dimensions.x);
+					break;
+				case D_DOWN:
+					dest.y += (distance + get_world()->world_dimensions.y);
+					break;
+				case D_UP:
+					dest.y += (distance - get_world()->world_dimensions.y);
+					break;
+					case D_NONE:
+						break;
+			}
 		}
 	}
+	//dest.x+= part_size;
 }
 
 int get_number(int num, int part_size)
