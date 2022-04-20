@@ -79,7 +79,7 @@ static void mouse_event(void);
 static void draw(void);
 static void update(void);
 static void draw_coordinates(void);
-static void draw_numbers();
+static void draw_numbers(void);
 static void create_sprite(SPRITE* sprite, char* path, int width, int height, int x, int y);
 static void draw_mouse_coordinates(int x, int y);
 static int get_number(int num, int part_size);
@@ -384,7 +384,8 @@ void draw_numbers()
 			int j=i;
 			SDL_Rect dest_num = dest;
 
-			dest.x += direction == D_LEFT || direction == D_DOWN ? (part_size*distance_left) : part_size*distance_left;
+			//dest.x += direction == D_LEFT || direction == D_DOWN ? (part_size*distance_left) : part_size*distance_left;
+			dest.x += (part_size*distance_left);
 
 			do {
 				place = j % divisor;
@@ -404,16 +405,16 @@ void draw_numbers()
 			switch (direction)
 			{
 				case D_LEFT:
-					dest.x += (distance - get_world()->world_dimensions.x);
+					dest.x += (distance_left - get_world()->world_dimensions.x);
 					break;
 				case D_RIGHT:
-					dest.x += (distance + get_world()->world_dimensions.x);
+					dest.x += (distance_left + get_world()->world_dimensions.x);
 					break;
 				case D_DOWN:
-					dest.y += (distance + get_world()->world_dimensions.y);
+					dest.y += (distance_left + get_world()->world_dimensions.y);
 					break;
 				case D_UP:
-					dest.y += (distance - get_world()->world_dimensions.y);
+					dest.y += (distance_left - get_world()->world_dimensions.y);
 					break;
 					case D_NONE:
 						break;
