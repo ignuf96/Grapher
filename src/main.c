@@ -132,7 +132,7 @@ int textbox_height = 250;
 char message[KISS_MAX_LENGTH];
 int kissdraw;
 
-struct POINTS points[NUMBER_OF_QUADRANTS][GRAPH_WIDTH][GRAPH_HEIGHT] = {0, 0, 0};
+struct POINTS points[NUMBER_OF_QUADRANTS*1000][GRAPH_WIDTH][GRAPH_HEIGHT] = {0, 0, 0};
 
 void initialize(void)
 {
@@ -173,7 +173,7 @@ void initialize(void)
 	init_box();
 }
 
-int main(int argc, char **argv)
+int main(void)
 {
 	initialize();
 	// ADAPTIVE SYNC (-1) IMMEDIATE(0)
@@ -182,8 +182,7 @@ int main(int argc, char **argv)
 	Uint32 time_step_ms = 1000 / 240;
 	Uint32 next_game_step = SDL_GetTicks();
 
-	while (!quit)
-	{
+	while (!quit) {
 		while(!paused)
 		{
 		Uint32 now = SDL_GetTicks();
@@ -199,9 +198,7 @@ int main(int argc, char **argv)
 				next_game_step += time_step_ms;
 			}
 			input();
-
 			SDL_RenderPresent(renderer);
-
 		} else
 			SDL_Delay(next_game_step - now);
 		}
@@ -278,10 +275,9 @@ for(int n=0; n < NUMBER_OF_QUADRANTS; n++)
 void draw(void)
 {
 	// set background color and clear screen with it
-	SDL_SetRenderDrawColor(renderer, 17, 7, 12, 255);
+	//SDL_SetRenderDrawColor(renderer, 17, 7, 12, 255);
 	SDL_RenderClear(renderer);
 	SDL_RenderCopy(renderer, background.texture, NULL, NULL);
-
 
 	draw_rect(graph_box);
 	// draw axes()
@@ -297,7 +293,7 @@ void draw(void)
 	kiss_label_draw(&label, renderer);
 	//kiss_button_draw(&button, renderer);
 	kiss_entry_draw(&entry, renderer);
-	kiss_textbox_draw(&textbox, renderer);
+	//kiss_textbox_draw(&textbox, renderer);
 	kissdraw = 0;
 }
 
@@ -305,7 +301,6 @@ void draw_numbers()
 {
 	int font_size = MIN_FONT_SIZE;
 	SPRITE *d_font = load_texture(font_size);
-	//int line = starting_line;
 
 	for(int i = MIN_FONT_SIZE; i < MAX_FONT_SIZE; i++)
 	{
@@ -337,6 +332,8 @@ void draw_numbers()
 		SDL_Rect dest;
 		dest.x = (get_world()->origin.x + origin_offset.x);
 		dest.y = (get_world()->origin.y + origin_offset.y);
+		dest.w = part_size;
+		dest.h = d_font->rect.h;
 
 		// draw zero
 		SDL_Rect zero_part;
@@ -345,9 +342,6 @@ void draw_numbers()
 		zero_part.w = part_size;
 		zero_part.h = d_font->rect.h;
 		SDL_RenderCopy(renderer, d_font->texture, &zero_part, &dest);
-
-		dest.w = part_size;
-		dest.h = d_font->rect.h;
 
 		switch(n)
 		{
@@ -384,7 +378,6 @@ void draw_numbers()
 			int j=i;
 			SDL_Rect dest_num = dest;
 
-			//dest.x += direction == D_LEFT || direction == D_DOWN ? (part_size*distance_left) : part_size*distance_left;
 			dest.x += (part_size*distance_left);
 
 			do {
@@ -421,7 +414,6 @@ void draw_numbers()
 			}
 		}
 	}
-	//dest.x+= part_size;
 }
 
 int get_number(int num, int part_size)
@@ -476,29 +468,22 @@ void mouse_event()
 							SDL_Rect temp_rect = points[n][i][j].rect;
 							temp_rect.w*=1.5;
 							temp_rect.h*=1.5;
-							//temp_rect.x/=2;
-							//temp_rect.y/=2;
 
 							if(SDL_PointInRect(&point, &temp_rect))
 							{
 								if(!points[n][i][j].is_visible && single_click && !double_click && !points[n][i][j].is_highlighted)
 								{
 									points[n][i][j].is_visible = true;
-									//single_click = false;
 								}
 								else if(points[n][i][j].is_visible && !points[n][i][j].is_highlighted && single_click && !double_click)
 								{
 									points[n][i][j].is_highlighted = true;
-									//single_click = false;
 								}
 
 								else if(points[n][i][j].is_visible && double_click)
 								{
-									printf("Hello double click\n");
 									points[n][i][j].is_visible = false;
 									points[n][i][j].is_highlighted = false;
-									printf("Removing\n");
-									//double_click = false;
 									printf("Clicked on:\nX: %d\nY: %d\n", points[n][i][j].pos.x, points[n][i][j].pos.y);
 								}
 							}
@@ -606,8 +591,6 @@ void init_box()
 	spacing = starting_spacing;
 	spacing_limit = 10;
 
-	// Currently a bug. I think the conversion to world units is returning zero at a certain point in vertical orientation
-	// and makes vertical and horizontal line disappear
 	// starting x is -render_distance * 3 fills screen left, middle, and right
 	if(get_world()->ASPECT_RATIO.x > get_world()->ASPECT_RATIO.y)
 	{
@@ -651,7 +634,6 @@ void init_box()
 		{
 			for(int j =0, x = quadrant.x; j < GRAPH_WIDTH; j++, x+=distance.x)
 			{
-
 				graph[n][i][j].x = x+origin_offset.x;
 				graph[n][i][j].y = y+origin_offset.y;
 				graph[n][i][j].w = 1*get_world()->world_dimensions.x;
