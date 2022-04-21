@@ -86,15 +86,7 @@ static int get_number(int num, int part_size);
 static void init_box(void);
 static void get_quadrant_pos(int location, ivec2 *quadrant, ivec2 *distance);
 static void draw_points(void);
-
-void button_event(kiss_button *button, SDL_Event *e, int *draw, int *kissquit)
-{
-	if(kiss_button_event(button, e, draw))
-	{
-		*kissquit = 1;
-		quit = true;
-	}
-}
+static void button_event(kiss_button *button, SDL_Event *e, int *draw, int *kissquit);
 
 SPRITE graph_box;
 SPRITE dot_texture;
@@ -118,6 +110,7 @@ struct POINTS {
 	ivec2 pos;
 };
 
+// KISS GUI Stuff
 kiss_array objects, a1;
 kiss_window kisswindow;
 kiss_button button = {0};
@@ -132,7 +125,7 @@ int textbox_height = 250;
 char message[KISS_MAX_LENGTH];
 int kissdraw;
 
-struct POINTS points[NUMBER_OF_QUADRANTS*1000][GRAPH_WIDTH][GRAPH_HEIGHT] = {0, 0, 0};
+struct POINTS points[NUMBER_OF_QUADRANTS][GRAPH_WIDTH][GRAPH_HEIGHT] = {0, 0, 0};
 
 void initialize(void)
 {
@@ -147,14 +140,14 @@ void initialize(void)
 
 	kiss_init(window, renderer, &objects);
 
-	kiss_window_new(&kisswindow, NULL, 0, 0, 0, 300, 50);
-	strcpy(message, "Write Your Linear Equation Here");
-	kiss_label_new(&label, &kisswindow, message, 0,
-					(kiss_textfont.fontheight + 2*kiss_normal.h) /2);
+	kiss_window_new(&kisswindow, NULL, 0, 0, 0, 320, 50);
+	//strcpy(message, "Write Your Linear Equation Here");
+	//kiss_label_new(&label, &kisswindow, message, 0,
+		//			(kiss_textfont.fontheight + 2*kiss_normal.h) /2);
 
 	label.textcolor.r = 166;
 	kisswindow.visible = 1;
-	kiss_entry_new(&entry, &kisswindow, 1, "y=mx+b", 0, 0, 300);
+	kiss_entry_new(&entry, &kisswindow, 1, "y=mx+b", 0, 0, 320);
 
 	init_world(window);
 
@@ -474,16 +467,20 @@ void mouse_event()
 								if(!points[n][i][j].is_visible && single_click && !double_click && !points[n][i][j].is_highlighted)
 								{
 									points[n][i][j].is_visible = true;
+									single_click = false;
 								}
-								else if(points[n][i][j].is_visible && !points[n][i][j].is_highlighted && single_click && !double_click)
+								if(points[n][i][j].is_visible && !points[n][i][j].is_highlighted && single_click && !double_click)
 								{
 									points[n][i][j].is_highlighted = true;
+									single_click = false;
 								}
 
-								else if(points[n][i][j].is_visible && double_click)
+								if(double_click)
 								{
+									printf("Attempting to remove point\n");
 									points[n][i][j].is_visible = false;
 									points[n][i][j].is_highlighted = false;
+									double_click = false;
 									printf("Clicked on:\nX: %d\nY: %d\n", points[n][i][j].pos.x, points[n][i][j].pos.y);
 								}
 							}
@@ -517,7 +514,7 @@ void input()
 				if(e.button.clicks == 1)
 				{
 					single_click = true;
-					double_click = false;
+					//double_click = false;
 					SDL_GetMouseState(&mouse_x, &mouse_y);
 					mouse_moved = true;
 					if ((e.type & SDL_BUTTON_LMASK) != 0)
@@ -531,7 +528,7 @@ void input()
 				{
 					double_click = true;
 					printf("double click\n");
-					single_click = false;
+					//single_click = false;
 				}
 				break;
 				case SDL_FINGERDOWN:
@@ -549,7 +546,7 @@ void input()
 
 				first_click = false;
 
-				single_click = false;
+				//single_click = false;
 				//double_click = false;
 				// }
 				break;
@@ -583,6 +580,15 @@ void input()
 
 	mouse_event();
 	SDL_PumpEvents();
+}
+
+void button_event(kiss_button *button, SDL_Event *e, int *draw, int *kissquit)
+{
+	if(kiss_button_event(button, e, draw))
+	{
+		*kissquit = 1;
+		quit = true;
+	}
 }
 
 void init_box()
