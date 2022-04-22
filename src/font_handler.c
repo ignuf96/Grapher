@@ -20,7 +20,6 @@
 #include <stdbool.h>
 #include <limits.h>
 #include <SDL2/SDL_system.h>
-#include <unistd.h>
 
 static bool fonts_loaded = false;
 TTF_Font *coordinate_font;

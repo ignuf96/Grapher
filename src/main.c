@@ -15,11 +15,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <SDL2/SDL_image.h>
-/* MAX VALUE FOR GRAPH LONG_MAX */
-#include <limits.h>
-// For sleep();
 #include <string.h>
-#include <unistd.h>
 #include <SDL2/SDL_platform.h>
 // Font things
 #include "../include/font_handler.h"
@@ -29,13 +25,14 @@
 // GUI stuff
 #include "../include/kiss_sdl.h"
 
+#include "../include/parser.h"
+
 // Window information for initialization
 SDL_Window *window;
 #define WINDOW_TITLE "Grapher"
 #define WINDOW_POSX SDL_WINDOWPOS_UNDEFINED
 #define WINDOW_POSY SDL_WINDOWPOS_UNDEFINED
 
-// dimensions 16:9
 static int axes_horizontal_line_width, axes_horizontal_line_height;
 static int axes_vertical_line_width, axes_vertical_line_height;
 static SDL_Renderer *renderer;
@@ -87,14 +84,13 @@ static void init_box(void);
 static void get_quadrant_pos(int location, ivec2 *quadrant, ivec2 *distance);
 static void draw_points(void);
 static bool has_entry_changed();
-SPRITE graph_box;
 
+SPRITE graph_box;
 SPRITE dot_texture;
 SPRITE highlighted_dot_texture;
 SPRITE background;
 
 #define NUMBER_OF_QUADRANTS 4
-
 // has to be same width and height or else causes bug
 #define GRAPH_WIDTH 100
 #define GRAPH_HEIGHT 100
@@ -113,6 +109,8 @@ struct POINTS {
 	ivec2 pos;
 };
 
+struct POINTS points[NUMBER_OF_QUADRANTS][GRAPH_WIDTH][GRAPH_HEIGHT] = {0, 0, 0};
+
 // KISS GUI Stuff
 kiss_array objects, a1;
 kiss_window kisswindow;
@@ -129,8 +127,6 @@ char previous_entrytext[250];
 
 char message[KISS_MAX_LENGTH];
 int kissdraw;
-
-struct POINTS points[NUMBER_OF_QUADRANTS][GRAPH_WIDTH][GRAPH_HEIGHT] = {0, 0, 0};
 
 void initialize(void)
 {
@@ -205,6 +201,8 @@ int main(void)
 	return 0;
 }
 
+int line_x11, line_x22;
+int line_y11, line_y22;
 void update(void)
 {
 	coordinate_location.x = origin_offset.x + get_world()->origin.x;
@@ -213,10 +211,12 @@ void update(void)
 	axes_vertical_line.rect.x = coordinate_location.x;
 	axes_horizontal_line.rect.y = coordinate_location.y;
 
-	x11 = x11 - origin_offset.x;
-	x22 = x22 + origin_offset.x;
-	y11 = y11 - origin_offset.y;
-	y22 = y22 + origin_offset.y;
+	line_x11 = x11 + origin_offset.x;
+	line_x22 = x22 + origin_offset.x;
+	line_y11 = y11 + origin_offset.y;
+	line_y22 = y22 + origin_offset.y;
+	//printf("x1: %d y1: %d\nx2: %d y2: %d\n", x11, y11,
+	//		x22, y22);
 }
 
 void draw_rect(SPRITE sprite)
@@ -293,10 +293,7 @@ void draw(void)
 	kiss_entry_draw(&entry, renderer);
 	kissdraw = 0;
 
-
-	SDL_RenderDrawLine(renderer, x11, y11, x22, y22);
-	//SDL_RenderPresent(renderer);
-
+	SDL_RenderDrawLine(renderer, line_x11, line_y11, line_x22, line_y22);
 }
 
 void draw_numbers()
@@ -584,39 +581,25 @@ void input()
 		}
 		kiss_window_event(&kisswindow, &e, &kissdraw);
 		kiss_entry_event(&entry, &e, &kissdraw);
+
 		if(has_entry_changed())
 		{
 			printf("Entry text: %s\n", entry.text);
 			char *c = &entry.text[0];
+			struct LINE_DATA line_data = parse_equation(c, entry_width);
 
-			ivec2 slope;
-			int yintercept;
-			int max_tries = 20;
-			int i = 0;
-
-			for(int i=0; i < max_tries; i++, c++)
-			{
-				switch (*c) {
-					case 'x':
-						slope.y = *(c-1) - '0';
-						break;
-					case '+': case'-':
-						yintercept = (*(c+2)) - '0';
-					default:
-						continue;
-				}
-			}
-			printf("Slope is: %d\nY-intercept is: %d\n", slope.y, yintercept);
+			//yintercept *= get_world()->world_dimensions.y;
+			//slope.y *= get_world()->world_dimensions.y;
 
 			x11 = get_world()->origin.x;
 			x22 = get_world()->origin.x;
-			y11 = yintercept + get_world()->origin.y;
-			y22 = yintercept + get_world()->origin.y;
+			y11 = -(line_data.y_intercept*get_world()->world_dimensions.y) + get_world()->origin.y;
+			y22 = -(line_data.y_intercept*get_world()->world_dimensions.y) + get_world()->origin.y;
 
 			x11-=(1*1000);
-			y11-=(slope.y*1000);
-			x22+=(1*1000);
-			y22+=(slope.y*1000);
+			y11-=(line_data.slope_rise*1000);
+			//x22+=(1*1000);
+			//y22+=(slope.y*1000);
 
 			printf("x1: %d y1: %d\nx2: %d y2: %d\n", x11, y11,
 				   x22, y22);

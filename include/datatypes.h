@@ -20,4 +20,14 @@ typedef struct INT_VECTOR4 {
     int y;
 }ivec4;
 
+enum LINE_FORM {STANDARD, POINT_SLOPE, SLOPE_INTERCEPT};
+
+struct LINE_DATA {
+    enum LINE_FORM line_form;
+    int slope_rise;
+    int slope_run;
+    int y_intercept;
+    int x_intercept;
+};
+
 #endif
