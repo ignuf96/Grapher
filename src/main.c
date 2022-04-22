@@ -86,9 +86,9 @@ static int get_number(int num, int part_size);
 static void init_box(void);
 static void get_quadrant_pos(int location, ivec2 *quadrant, ivec2 *distance);
 static void draw_points(void);
-static void button_event(kiss_button *button, SDL_Event *e, int *draw, int *kissquit);
-
+static bool has_entry_changed();
 SPRITE graph_box;
+
 SPRITE dot_texture;
 SPRITE highlighted_dot_texture;
 SPRITE background;
@@ -102,6 +102,9 @@ SPRITE background;
 SDL_Rect graph[NUMBER_OF_QUADRANTS][GRAPH_WIDTH][GRAPH_HEIGHT];
 SDL_Rect *graphp = &graph[0][0][0];
 SDL_Rect graph_size = {0, 0, 0, 0};
+
+
+int x11, y11, x22, y22;
 
 struct POINTS {
 	SDL_Rect rect;
@@ -122,6 +125,8 @@ kiss_textbox textbox = {0};
 int textbox_width = 250;
 int textbox_height = 250;
 
+char previous_entrytext[250];
+
 char message[KISS_MAX_LENGTH];
 int kissdraw;
 
@@ -141,13 +146,10 @@ void initialize(void)
 	kiss_init(window, renderer, &objects);
 
 	kiss_window_new(&kisswindow, NULL, 0, 0, 0, 320, 50);
-	//strcpy(message, "Write Your Linear Equation Here");
-	//kiss_label_new(&label, &kisswindow, message, 0,
-		//			(kiss_textfont.fontheight + 2*kiss_normal.h) /2);
-
-	label.textcolor.r = 166;
+		label.textcolor.r = 166;
 	kisswindow.visible = 1;
 	kiss_entry_new(&entry, &kisswindow, 1, "y=mx+b", 0, 0, 320);
+	strncpy(previous_entrytext, entry.text, entry.textwidth);
 
 	init_world(window);
 
@@ -210,6 +212,11 @@ void update(void)
 
 	axes_vertical_line.rect.x = coordinate_location.x;
 	axes_horizontal_line.rect.y = coordinate_location.y;
+
+	x11 = x11 - origin_offset.x;
+	x22 = x22 + origin_offset.x;
+	y11 = y11 - origin_offset.y;
+	y22 = y22 + origin_offset.y;
 }
 
 void draw_rect(SPRITE sprite)
@@ -283,11 +290,13 @@ void draw(void)
 	draw_numbers();
 
 	kiss_window_draw(&kisswindow, renderer);
-	kiss_label_draw(&label, renderer);
-	//kiss_button_draw(&button, renderer);
 	kiss_entry_draw(&entry, renderer);
-	//kiss_textbox_draw(&textbox, renderer);
 	kissdraw = 0;
+
+
+	SDL_RenderDrawLine(renderer, x11, y11, x22, y22);
+	//SDL_RenderPresent(renderer);
+
 }
 
 void draw_numbers()
@@ -575,20 +584,71 @@ void input()
 		}
 		kiss_window_event(&kisswindow, &e, &kissdraw);
 		kiss_entry_event(&entry, &e, &kissdraw);
-		button_event(&button, &e, &kissdraw, &kissquit);
+		if(has_entry_changed())
+		{
+			printf("Entry text: %s\n", entry.text);
+			char *c = &entry.text[0];
+
+			ivec2 slope;
+			int yintercept;
+			int max_tries = 20;
+			int i = 0;
+
+			for(int i=0; i < max_tries; i++, c++)
+			{
+				switch (*c) {
+					case 'x':
+						slope.y = *(c-1) - '0';
+						break;
+					case '+': case'-':
+						yintercept = (*(c+2)) - '0';
+					default:
+						continue;
+				}
+			}
+			printf("Slope is: %d\nY-intercept is: %d\n", slope.y, yintercept);
+
+			x11 = get_world()->origin.x;
+			x22 = get_world()->origin.x;
+			y11 = yintercept + get_world()->origin.y;
+			y22 = yintercept + get_world()->origin.y;
+
+			x11-=(1*1000);
+			y11-=(slope.y*1000);
+			x22+=(1*1000);
+			y22+=(slope.y*1000);
+
+			printf("x1: %d y1: %d\nx2: %d y2: %d\n", x11, y11,
+				   x22, y22);
+		}
 	}
 
 	mouse_event();
 	SDL_PumpEvents();
 }
 
-void button_event(kiss_button *button, SDL_Event *e, int *draw, int *kissquit)
+bool has_entry_changed()
 {
-	if(kiss_button_event(button, e, draw))
+	bool entry_changed = false;
+	char *check_for_enter = &entry.text[0];
+	bool is_enter = false;
+
+	while(*check_for_enter)
 	{
-		*kissquit = 1;
-		quit = true;
+		if(*check_for_enter == ';')
+		{
+			is_enter = true;
+		}
+		check_for_enter++;
 	}
+
+	if(is_enter && strncmp(previous_entrytext, entry.text, entry.textwidth))
+	{
+		entry_changed = true;
+		strncpy(previous_entrytext, entry.text, entry.textwidth);
+	}
+
+	return entry_changed;
 }
 
 void init_box()
