@@ -59,18 +59,25 @@ void discard(char *str)
     printf("End check\n");
     str = &str[0];
 }
-
+#include <unistd.h>
+#include <stdlib.h>
 struct LINE_DATA parse_equation(char *equation, int length)
 {
     struct LINE_DATA line_data;
+    char str_buff[length];
+
+    strncpy(str_buff, equation, length);
+
+    //printf("String copied from equation: %s\n", str_buff);
+    //exit(1);
 
    #define MAX_LENGTH_BUFFERS 8
-    char *starting_pos = equation;
+    char *starting_pos = &str_buff[0];
     char *xpos = NULL;
     char *divpos = NULL;
     char *operatorpos = NULL;
     char *semicolonpos = NULL;
-    char *str = equation;
+    char *str = str_buff;
 
     discard(str);
     // find division sign and variable x position

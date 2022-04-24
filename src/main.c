@@ -98,7 +98,7 @@ SPRITE background;
 SDL_Rect graph[NUMBER_OF_QUADRANTS][GRAPH_WIDTH][GRAPH_HEIGHT];
 SDL_Rect *graphp = &graph[0][0][0];
 SDL_Rect graph_size = {0, 0, 0, 0};
-
+SDL_Rect *ordergraph;
 
 int x11, y11, x22, y22;
 
