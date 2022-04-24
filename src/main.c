@@ -592,16 +592,44 @@ void input()
 			//slope.y *= get_world()->world_dimensions.y;
 
 			x11 = get_world()->origin.x;
-			x22 = get_world()->origin.x;
+			x22 = get_world()->origin.x +get_world()->world_dimensions.x/2;
 			y11 = -(line_data.y_intercept*get_world()->world_dimensions.y) + get_world()->origin.y;
-			y22 = -(line_data.y_intercept*get_world()->world_dimensions.y) + get_world()->origin.y;
+			//y22 = -(line_data.y_intercept*get_world()->world_dimensions.y) + get_world()->origin.y;
 
-			x11-=(1*1000);
+			int run = 1;
+			x11+=((run*1000)+(get_world()->world_dimensions.x/2));
+			/*
+			int END_OF_LINE = 1000;
+			for(int i=0; i < END_OF_LINE; i++)
+			{
+				x11+=(1*get_world()->world_dimensions.x);
+			}
+			*/
 			y11-=(line_data.slope_rise*1000);
-			//x22+=(1*1000);
-			//y22+=(slope.y*1000);
 
-			printf("x1: %d y1: %d\nx2: %d y2: %d\n", x11, y11,
+		for(int n=0; n < NUMBER_OF_QUADRANTS; n++)
+		{
+			ivec2 quadrant = {get_world()->origin.x, get_world()->origin.y};
+			ivec2 distance = {0, 0};
+
+			get_quadrant_pos(n, &quadrant, &distance);
+
+			for(int i=0, y = quadrant.y; i < GRAPH_HEIGHT; i++, y+=distance.y)
+			{
+				for(int j =0, x = quadrant.x; j < GRAPH_WIDTH; j++, x+=distance.x)
+				{
+					if(points[n][i][j].pos.y == line_data.y_intercept)
+					{
+						y22 = points[n][i][j].rect.y+points[n][i][j].rect.h;
+						// break out of nested loops
+						j = GRAPH_WIDTH;
+						i = GRAPH_HEIGHT;
+						n = NUMBER_OF_QUADRANTS;
+					}
+				}
+			}
+		}
+		printf("x1: %d y1: %d\nx2: %d y2: %d\n", x11, y11,
 				   x22, y22);
 		}
 	}
@@ -609,7 +637,6 @@ void input()
 	mouse_event();
 	SDL_PumpEvents();
 }
-
 bool has_entry_changed()
 {
 	bool entry_changed = false;
