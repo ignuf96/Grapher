@@ -11,6 +11,7 @@
 #include <SDL2/SDL_timer.h>
 #include <SDL2/SDL_touch.h>
 #include <SDL2/SDL_video.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -128,13 +129,54 @@ char previous_entrytext[250];
 char message[KISS_MAX_LENGTH];
 int kissdraw;
 
+int refresh_rate;
+
 void initialize(void)
 {
 	printf("Iniitializing\n\n");
 	SDL_Init(SDL_INIT_EVERYTHING);
 	window = SDL_CreateWindow(WINDOW_TITLE, WINDOW_POSX, WINDOW_POSY, 1920,
 							  1080, SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_RESIZABLE);
+
 	renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+	// enable vsync
+	SDL_GL_SetSwapInterval(1);
+
+    int display_count = 0, display_index = 0, mode_index = 0;
+    SDL_DisplayMode mode = { SDL_PIXELFORMAT_UNKNOWN, 0, 0, 0, 0 };
+    if ((display_count = SDL_GetNumVideoDisplays()) < 1) {
+        SDL_Log("SDL_GetNumVideoDisplays returned: %i", display_count);
+    }
+
+    if (SDL_GetDisplayMode(display_index, mode_index, &mode) != 0) {
+        SDL_Log("SDL_GetDisplayMode failed: %s", SDL_GetError());
+    }
+
+	refresh_rate = mode.refresh_rate;
+
+	printf("refresh rate: %d\n", refresh_rate);
+
+
+	if(refresh_rate >= 0 && refresh_rate <= 60)
+	{
+		mouse_speed.x = 5;
+		mouse_speed.y = 5;
+	}
+	else if(refresh_rate > 60 && refresh_rate <= 120)
+	{
+		mouse_speed.x = 10;
+		mouse_speed.y = 10;
+	}
+	else if(refresh_rate > 120 && refresh_rate <= 180)
+	{
+		mouse_speed.x = 15;
+		mouse_speed.y = 15;
+	} else if(refresh_rate > 180)
+	{
+		mouse_speed.x = 20;
+		mouse_speed.y = 20;
+	}
+
 
 	kissdraw = 1;
 	kiss_array_new(&objects);
@@ -170,32 +212,56 @@ int main(void)
 	// ADAPTIVE SYNC (-1) IMMEDIATE(0)
 	SDL_GL_SetSwapInterval(1);
 
+	#define TIME_PER_TICK 60
+
+	int last_tick_time = SDL_GetTicks();
+	int last_frame_time = SDL_GetTicks();
+
 	Uint32 time_step_ms = 1000 / 240;
 	Uint32 next_game_step = SDL_GetTicks();
+	int computer_is_too_slow_limit = 20;
 
-	while (!quit) {
+	while(!quit)
+	{
+		while(!paused)
+		{
+			update();
+			draw();
+			input();
+			SDL_RenderPresent(renderer);
+		}
+		input();
+		SDL_Delay(1);
+	}
+
+	/*while (!quit) {
 		while(!paused)
 		{
 		Uint32 now = SDL_GetTicks();
 
 		if(next_game_step <= now)
 		{
-			int computer_is_too_slow_limit = 35;
 
 			while((next_game_step <= now) && (computer_is_too_slow_limit--))
 			{
 				update();
 				draw();
 				next_game_step += time_step_ms;
+				input();
 			}
 			input();
 			SDL_RenderPresent(renderer);
 		} else
-			SDL_Delay(next_game_step - now);
+		{
+			update();
+			input();
+			//SDL_Delay(next_game_step - now);
 		}
-		input();
-		SDL_Delay(1);
+		}
+		//input();
+		//SDL_Delay(1);
 	}
+	*/
 	cleanup();
 
 	return 0;
