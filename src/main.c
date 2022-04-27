@@ -1,7 +1,3 @@
-/* TODO:
-   1. Implement a constant frame-rate loop. Possibly 30-60 fps. This will help with smoothness of mouse gestures.
-*/
-
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_events.h>
 #include <SDL2/SDL_mouse.h>
@@ -209,17 +205,6 @@ void initialize(void)
 int main(void)
 {
 	initialize();
-	// ADAPTIVE SYNC (-1) IMMEDIATE(0)
-	SDL_GL_SetSwapInterval(1);
-
-	#define TIME_PER_TICK 60
-
-	int last_tick_time = SDL_GetTicks();
-	int last_frame_time = SDL_GetTicks();
-
-	Uint32 time_step_ms = 1000 / 240;
-	Uint32 next_game_step = SDL_GetTicks();
-	int computer_is_too_slow_limit = 20;
 
 	while(!quit)
 	{
@@ -233,35 +218,6 @@ int main(void)
 		input();
 		SDL_Delay(1);
 	}
-
-	/*while (!quit) {
-		while(!paused)
-		{
-		Uint32 now = SDL_GetTicks();
-
-		if(next_game_step <= now)
-		{
-
-			while((next_game_step <= now) && (computer_is_too_slow_limit--))
-			{
-				update();
-				draw();
-				next_game_step += time_step_ms;
-				input();
-			}
-			input();
-			SDL_RenderPresent(renderer);
-		} else
-		{
-			update();
-			input();
-			//SDL_Delay(next_game_step - now);
-		}
-		}
-		//input();
-		//SDL_Delay(1);
-	}
-	*/
 	cleanup();
 
 	return 0;
