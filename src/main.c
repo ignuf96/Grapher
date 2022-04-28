@@ -39,16 +39,13 @@ static SDL_Event e;
 // Used for drawing graph
 static ivec2 origin_offset = { 0, 0 };
 // Lower means faster
-static ivec2 mouse_speed = { 30, 30 };
+static ivec2 mouse_speed;
 static ivec2 coordinate_location = { 0, 0 };
 // Amount of space away from y and x axis
 // Used for drawing lines in the quadrant
 float spacing;
 float starting_spacing;
 float spacing_limit;
-
-static float fps;
-static const float FPS_TARGET = 240.0f;
 
 static SPRITE axes_horizontal_line;
 static SPRITE axes_vertical_line;
@@ -89,8 +86,8 @@ SPRITE background;
 
 #define NUMBER_OF_QUADRANTS 4
 // has to be same width and height or else causes bug
-#define GRAPH_WIDTH 100
-#define GRAPH_HEIGHT 100
+#define GRAPH_WIDTH 200
+#define GRAPH_HEIGHT 200
 
 SDL_Rect graph[NUMBER_OF_QUADRANTS][GRAPH_WIDTH][GRAPH_HEIGHT];
 SDL_Rect *graphp = &graph[0][0][0];
@@ -155,22 +152,22 @@ void initialize(void)
 
 	if(refresh_rate >= 0 && refresh_rate <= 60)
 	{
-		mouse_speed.x = 5;
-		mouse_speed.y = 5;
+		mouse_speed.x = 20;
+		mouse_speed.y = 20;
 	}
 	else if(refresh_rate > 60 && refresh_rate <= 120)
 	{
-		mouse_speed.x = 10;
-		mouse_speed.y = 10;
+		mouse_speed.x = 40;
+		mouse_speed.y = 40;
 	}
 	else if(refresh_rate > 120 && refresh_rate <= 180)
 	{
-		mouse_speed.x = 15;
-		mouse_speed.y = 15;
+		mouse_speed.x = 70;
+		mouse_speed.y = 70;
 	} else if(refresh_rate > 180)
 	{
-		mouse_speed.x = 20;
-		mouse_speed.y = 20;
+		mouse_speed.x = 100;
+		mouse_speed.y = 100;
 	}
 
 
@@ -460,15 +457,16 @@ void mouse_event()
 {
 	ivec2 mouse_units;
 	ivec2 mouse_raw;
-	if (left_mousedown)
+	if (left_mousedown || double_click)
 	{
 		SDL_GetMouseState(&mouse_raw.x, &mouse_raw.y);
 		mouse_units.x = mouse_raw.x;
 		mouse_units.y = mouse_raw.y;
 		mouse_units = conv_units(mouse_raw.x, mouse_raw.y);
 
-		if (first_click == false)
+		if (first_click == false || double_click)
 		{
+			printf("Checking dots\n");
 			first_click = true;
 			first_click_x = mouse_raw.x;
 			first_click_y = mouse_raw.y;
@@ -476,46 +474,50 @@ void mouse_event()
 			SDL_Point point = { mouse_raw.x, mouse_raw.y } ;
 
 			for(int n=0; n < NUMBER_OF_QUADRANTS; n++)
+			{
+				ivec2 quadrant = {get_world()->origin.x, get_world()->origin.y};
+				ivec2 distance = {0, 0};
+
+				get_quadrant_pos(n, &quadrant, &distance);
+
+				for(int i=0, y = quadrant.y; i < GRAPH_HEIGHT; i++, y+=distance.y)
 				{
-					ivec2 quadrant = {get_world()->origin.x, get_world()->origin.y};
-					ivec2 distance = {0, 0};
-
-					get_quadrant_pos(n, &quadrant, &distance);
-
-					for(int i=0, y = quadrant.y; i < GRAPH_HEIGHT; i++, y+=distance.y)
+					for(int j =0, x = quadrant.x; j < GRAPH_WIDTH; j++, x+=distance.x)
 					{
-						for(int j =0, x = quadrant.x; j < GRAPH_WIDTH; j++, x+=distance.x)
+						SDL_Rect temp_rect = points[n][i][j].rect;
+						temp_rect.w*=1.5;
+						temp_rect.h*=1.5;
+
+						if(SDL_PointInRect(&point, &temp_rect))
 						{
-							SDL_Rect temp_rect = points[n][i][j].rect;
-							temp_rect.w*=1.5;
-							temp_rect.h*=1.5;
-
-							if(SDL_PointInRect(&point, &temp_rect))
+							if(!points[n][i][j].is_visible && single_click && !double_click && !points[n][i][j].is_highlighted)
 							{
-								if(!points[n][i][j].is_visible && single_click && !double_click && !points[n][i][j].is_highlighted)
-								{
-									points[n][i][j].is_visible = true;
-									single_click = false;
-								}
-								if(points[n][i][j].is_visible && !points[n][i][j].is_highlighted && single_click && !double_click)
-								{
-									points[n][i][j].is_highlighted = true;
-									single_click = false;
-								}
+								points[n][i][j].is_visible = true;
+								single_click = false;
+							}
+							if(points[n][i][j].is_visible && !points[n][i][j].is_highlighted && single_click && !double_click)
+							{
+								points[n][i][j].is_highlighted = true;
+								single_click = false;
+							} else if(points[n][i][j].is_visible && points[n][i][j].is_highlighted && single_click && !double_click)
+							{
+								points[n][i][j].is_highlighted = false;
+								single_click = false;
+							}
 
-								if(double_click)
-								{
-									printf("Attempting to remove point\n");
-									points[n][i][j].is_visible = false;
-									points[n][i][j].is_highlighted = false;
-									double_click = false;
-									printf("Clicked on:\nX: %d\nY: %d\n", points[n][i][j].pos.x, points[n][i][j].pos.y);
-								}
+							if(double_click)
+							{
+								printf("Attempting to remove point\n");
+								points[n][i][j].is_visible = false;
+								points[n][i][j].is_highlighted = false;
+								double_click = false;
+								printf("Clicked on:\nX: %d\nY: %d\n", points[n][i][j].pos.x, points[n][i][j].pos.y);
 							}
 						}
 					}
 				}
 			}
+		}
 		// We get the difference between the coordinates from when
 		// the user first clicks the mouse and while they are moving the mouse
 		origin_offset.x += (((first_click_x - mouse_raw.x)) / mouse_speed.x);
@@ -541,8 +543,9 @@ void input()
 			case SDL_MOUSEBUTTONDOWN:
 				if(e.button.clicks == 1)
 				{
+					printf("Double click false\n");
 					single_click = true;
-					//double_click = false;
+					double_click = false;
 					SDL_GetMouseState(&mouse_x, &mouse_y);
 					mouse_moved = true;
 					if ((e.type & SDL_BUTTON_LMASK) != 0)
@@ -556,7 +559,7 @@ void input()
 				{
 					double_click = true;
 					printf("double click\n");
-					//single_click = false;
+					single_click = false;
 				}
 				break;
 				case SDL_FINGERDOWN:
@@ -742,29 +745,29 @@ void init_box()
 						points[n][i][j].pos.x = j;
 						points[n][i][j].pos.y = i+1;
 
-						points[n][i][j].rect.w = 15;
-						points[n][i][j].rect.h = 15;
+						points[n][i][j].rect.w = 23;
+						points[n][i][j].rect.h = 23;
 						break;
 					case 1:
 						points[n][i][j].pos.x = -j-1;
 						points[n][i][j].pos.y = i+1;
 
-						points[n][i][j].rect.w = 15;
-						points[n][i][j].rect.h = 15;
+						points[n][i][j].rect.w = 23;
+						points[n][i][j].rect.h = 23;
 						break;
 					case 2:
 						points[n][i][j].pos.x = -j-1;
 						points[n][i][j].pos.y = -i;
 
-						points[n][i][j].rect.w = 15;
-						points[n][i][j].rect.h = 15;
+						points[n][i][j].rect.w = 23;
+						points[n][i][j].rect.h = 23;
 						break;
 					case 3:
 						points[n][i][j].pos.x = j;
 						points[n][i][j].pos.y = -i;
 
-						points[n][i][j].rect.w = 15;
-						points[n][i][j].rect.h = 15;
+						points[n][i][j].rect.w = 23;
+						points[n][i][j].rect.h = 23;
 						break;
 				}
 			}
